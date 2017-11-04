@@ -18,7 +18,7 @@ let%pass rewrite_plus : L0.entry -> L1.entry =
   { expr = function
     | `Plus ([%r a], [%r b]) -> `Minus (a, `Minus (`Int 0, b)) }
 
-let%pass eval : L1.entry -> L2.entry
+let%pass eval : L1.entry -> L2.entry =
   let rec compute : L1.expr -> int = function
     | `Int i -> 0
     | `Minus (a, b) -> (compute a) - (compute b) in

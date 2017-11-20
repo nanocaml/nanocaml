@@ -1,0 +1,15 @@
+opam-version: "1.2"
+name: "nanocaml"
+version: "0.1"
+maintainer: "iitalics, OhadRau"
+homepage: "https://github.com/nanocaml/nanocaml"
+homepage: "https://github.com/nanocaml/nanocaml/issues"
+license: "MIT"
+dev-repo: "git+https://github.com/nanocaml/nanocaml.git"
+depends: [
+  "jbuilder"
+  "ocaml-migrate-parsetree"
+  ]
+build: [
+  ["jbuilder" "build" "-p" name "-j" jobs]
+  ]

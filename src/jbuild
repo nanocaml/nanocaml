@@ -1,6 +1,7 @@
 (jbuild_version 1)
 
-(executable
+(library
   ((name nanocaml)
+   (kind ppx_rewriter)
    (libraries (ocaml-migrate-parsetree))
    (preprocess no_preprocessing)))

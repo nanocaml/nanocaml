@@ -1,6 +1,0 @@
-B ../_build/default/src
-FLG -w -40
-PKG compiler-libs
-PKG compiler-libs.common
-PKG ocaml-migrate-parsetree
-PKG result

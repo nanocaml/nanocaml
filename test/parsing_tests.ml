@@ -13,6 +13,15 @@ let stri_mod_bind stri =
   | Pstr_module mb -> mb
   | _ -> raise (Failure "incorrect structure item accessor")
 
+let () =
+  stri_mod_bind
+    [%stri module Test_L0 = struct
+       type a = [ `A of b ]
+       and b = [ `B of a ]
+     end]
+  |> Nanocaml.Lang.language_of_module
+  |> Hashtbl.add Nanocaml.Lang.languages "Test_L0"
+
 let tt =
   "parsing" >:::
     let open Nanocaml.Lang in
@@ -92,7 +101,7 @@ let tt =
                        {npp_name = "B"; npp_args = [ NPtype_nonterm "a" ]} ]
           (lang.npl_nonterms
            |> List.map (fun nt -> nt.npnt_productions)
-           |> List.concat)
+           |> List.concat);
         end;
 
       "language_of_module(2)" >::
@@ -107,6 +116,19 @@ let tt =
           |> ignore;
           assert_failure "expected language to fail"
         with Location.Error _ -> ()
+        end;
+
+      "language_of_module(3)" >::
+        begin fun _ ->
+        let lang =
+          stri_mod_bind
+            [%stri module L1 = struct
+               include Test_L0
+               type c = [ `C of int ]
+             end ]
+          |> l_of_mb
+        in
+        assert_equal ["c"; "a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms)
         end;
 
     ]

@@ -29,6 +29,30 @@ type np_language =
   }
 
 
+(** global table of all defined languages.
+    TODO: nv wants to make this into a real database,
+      which would allow caching, cross-file nanopass, etc. **)
+let languages : (string, np_language) Hashtbl.t
+  = Hashtbl.create 30
+
+
+(** returns the language with the given name. raises
+    [Not_found] if no such language has been defined. **)
+let find_language ?(exn=Not_found) name =
+  Option.get_exn
+    (Hashtbl.find_option languages name)
+    exn
+
+(** [language_nonterm l ~name] returns the nonterminal
+    in language [l] with the given name. raises [Not_found]
+    if no such nonterminal. *)
+let language_nonterm ?(exn=Not_found) lang ~name =
+  List.find_exn
+    (fun nt -> nt.npnt_name = name)
+    exn lang.npl_nonterms
+
+
+
 (** convert [core_type] into nanopass type. **)
 let type_of_core_type ~nt_names t =
   let rec cvt ptyp =
@@ -93,7 +117,7 @@ let language_of_module =
           Pmod_structure
             [ {pstr_desc = Pstr_type (Recursive, type_decls)} ]}}
     ->
-     let nt_names = List.map (fun {ptype_name = {txt = name}} -> name) type_decls in
+     let nt_names = List.map (fun {ptype_name = {txt}} -> txt) type_decls in
      let nonterms = List.map (nonterm_of_type_decl ~nt_names) type_decls in
      {npl_loc = loc;
       npl_name = name;
@@ -104,11 +128,39 @@ let language_of_module =
      pmb_expr =
        {pmod_desc =
           Pmod_structure
-            [ {pstr_desc = Pstr_include _};
+            [ {pstr_desc =
+                 Pstr_include
+                   {pincl_mod =
+                      {pmod_desc =
+                         Pmod_ident {txt = Lident ext_lang_name}}}};
               {pstr_desc = Pstr_type (Recursive, type_decls)} ]}}
     ->
-     Location.raise_errorf ~loc
-       "language extensions are unimplemented"
+     let ext_lang =
+       find_language
+         ~exn:(Location.Error
+                 (Location.errorf ~loc
+                    "language %S has not been defined" ext_lang_name))
+         ext_lang_name
+     in
+
+     let nt_names = List.map (fun {ptype_name = {txt}} -> txt) type_decls in
+     let nt_names' = List.map (fun {npnt_name} -> npnt_name) ext_lang.npl_nonterms in
+     let nonterms =
+       List.map (nonterm_of_type_decl
+                   ~nt_names:(nt_names @ nt_names'))
+         type_decls
+     in
+     let nonterms' =
+       List.filter_map (fun name ->
+           if List.mem name nt_names then
+             None
+           else
+             Some (language_nonterm ext_lang name))
+         nt_names'
+     in
+     {npl_loc = loc;
+      npl_name = name;
+      npl_nonterms = nonterms @ nonterms'}
 
   | {pmb_loc = loc} ->
      Location.raise_errorf ~loc

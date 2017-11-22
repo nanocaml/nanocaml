@@ -92,8 +92,9 @@ let production_of_row_field ~nt_names =
        "invalid nanopass production form"
 
 (** convert [type_declaration] into nanopass nonterminal **)
-let nonterm_of_type_decl ~nt_names =
+let nonterm_of_type_decl ?extending ~nt_names =
   function
+  (* type nt = [ `A | `B ... ] *)
   | {ptype_name = {txt = name};
      ptype_params = [];
      ptype_kind = Ptype_abstract;
@@ -103,6 +104,63 @@ let nonterm_of_type_decl ~nt_names =
      {npnt_name = name;
       npnt_productions = prods}
 
+  (* type nt = { add : [ `A ... ] ; del : [ `B ... ] } *)
+  | {ptype_name = {txt = name};
+     ptype_loc = loc;
+     ptype_params = [];
+     ptype_kind = Ptype_record decls}
+    ->
+     let lang =
+       Option.get_exn extending
+         (Location.Error
+            (Location.errorf ~loc "must be extending a language to use this form"))
+     in
+     let old_nontem =
+       language_nonterm
+         ~exn:(Location.Error
+                 (Location.errorf ~loc "no such nonterminal %S in language %S"
+                    name lang.npl_name))
+         lang
+         ~name
+     in
+
+     (* get the 'lname' label out of the record, and parse
+        the productions contained in the type. *)
+     let get_prods lname =
+       match List.find_opt
+               (fun {pld_name = {txt = x}} -> x = lname)
+               decls
+       with
+       | None -> None
+       | Some {pld_type = {ptyp_desc = Ptyp_variant (rows, Closed, _)}} ->
+          Some (List.map (production_of_row_field ~nt_names) rows)
+       | Some _ ->
+          Location.raise_errorf ~loc
+            "invalid extended production"
+     in
+
+     (* create functions for adding productions / deleting productions
+        if the 'add' or 'del' labels are omitted, then nothing is added / removed. *)
+     let add =
+       Option.map_default
+         (fun add_prs -> List.append add_prs)
+         identity (* do nothing when [None] *)
+         (get_prods "add")
+     in
+     let del =
+       Option.map_default
+         (fun del_prs ->
+           let keep p = List.for_all (fun p' -> p.npp_name <> p'.npp_name) del_prs in
+           List.filter keep)
+         identity
+         (get_prods "del")
+     in
+
+     let prods = old_nontem.npnt_productions |> del |> add in
+     {npnt_name = name;
+      npnt_productions = prods}
+
+  (* invalid nonterminal *)
   | {ptype_loc = loc} ->
      Location.raise_errorf ~loc
        "invalid nanopass type declaration form"
@@ -147,6 +205,7 @@ let language_of_module =
      let nt_names' = List.map (fun {npnt_name} -> npnt_name) ext_lang.npl_nonterms in
      let nonterms =
        List.map (nonterm_of_type_decl
+                   ~extending:ext_lang
                    ~nt_names:(nt_names @ nt_names'))
          type_decls
      in

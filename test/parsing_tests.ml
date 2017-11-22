@@ -16,7 +16,7 @@ let stri_mod_bind stri =
 let () =
   stri_mod_bind
     [%stri module Test_L0 = struct
-       type a = [ `A of b ]
+       type a = [ `A of b | `A0 of a ]
        and b = [ `B of a ]
      end]
   |> Nanocaml.Lang.language_of_module
@@ -130,5 +130,23 @@ let tt =
         in
         assert_equal ["c"; "a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms)
         end;
+
+      "language_of_module(4)" >::
+        begin fun _ ->
+        let lang =
+          stri_mod_bind
+            [%stri module L1 = struct
+               include Test_L0
+               type a = { del : [ `A ]
+                        ; add : [ `AB of a * b ] }
+             end ]
+          |> l_of_mb
+        in
+        assert_equal ["a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms);
+        let a_nt = List.find (fun nt -> nt.npnt_name = "a") lang.npl_nonterms in
+        let a_prods = a_nt.npnt_productions in
+        assert_equal ["AB"; "A0"] (List.map (fun pr -> pr.npp_name) a_prods);
+        end;
+
 
     ]

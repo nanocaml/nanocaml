@@ -3,5 +3,6 @@
 (library
   ((name nanocaml)
    (kind ppx_rewriter)
-   (libraries (ocaml-migrate-parsetree))
+   (libraries (batteries
+               ocaml-migrate-parsetree))
    (preprocess no_preprocessing)))

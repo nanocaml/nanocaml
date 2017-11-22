@@ -1,3 +1,4 @@
+open Batteries
 open Ast
 
 (** a type recognized by nanopass; usually a part of a production.

@@ -67,17 +67,48 @@ let production_of_row_field ~nt_names =
        "invalid nanopass production form"
 
 (** convert [type_declaration] into nanopass nonterminal **)
-let nonterm_of_type_decl ~nt_names td =
-  match td with
+let nonterm_of_type_decl ~nt_names =
+  function
   | {ptype_name = {txt = name};
      ptype_params = [];
      ptype_kind = Ptype_abstract;
      ptype_manifest = Some {ptyp_desc = Ptyp_variant (rows, Closed, _)}}
     ->
+     let prods = List.map (production_of_row_field ~nt_names) rows in
      {npnt_name = name;
-      npnt_productions =
-        List.map (production_of_row_field ~nt_names) rows}
+      npnt_productions = prods}
 
   | {ptype_loc = loc} ->
      Location.raise_errorf ~loc
        "invalid nanopass type declaration form"
+
+(** convert [module_binding] into nanopass language **)
+let language_of_module =
+  function
+  | {pmb_name = {txt = name};
+     pmb_loc = loc;
+     pmb_expr =
+       {pmod_desc =
+          Pmod_structure
+            [ {pstr_desc = Pstr_type (Recursive, type_decls)} ]}}
+    ->
+     let nt_names = List.map (fun {ptype_name = {txt = name}} -> name) type_decls in
+     let nonterms = List.map (nonterm_of_type_decl ~nt_names) type_decls in
+     {npl_loc = loc;
+      npl_name = name;
+      npl_nonterms = nonterms}
+
+  | {pmb_name = {txt = name};
+     pmb_loc = loc;
+     pmb_expr =
+       {pmod_desc =
+          Pmod_structure
+            [ {pstr_desc = Pstr_include _};
+              {pstr_desc = Pstr_type (Recursive, type_decls)} ]}}
+    ->
+     Location.raise_errorf ~loc
+       "language extensions are unimplemented"
+
+  | {pmb_loc = loc} ->
+     Location.raise_errorf ~loc
+       "invalid nanopass language form"

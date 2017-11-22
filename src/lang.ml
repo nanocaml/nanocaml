@@ -116,12 +116,10 @@ let nonterm_of_type_decl ?extending ~nt_names =
             (Location.errorf ~loc "must be extending a language to use this form"))
      in
      let old_nontem =
-       language_nonterm
+       language_nonterm lang ~name
          ~exn:(Location.Error
                  (Location.errorf ~loc "no such nonterminal %S in language %S"
                     name lang.npl_name))
-         lang
-         ~name
      in
 
      (* get the 'lname' label out of the record, and parse
@@ -168,6 +166,8 @@ let nonterm_of_type_decl ?extending ~nt_names =
 (** convert [module_binding] into nanopass language **)
 let language_of_module =
   function
+  (* module L = struct type nt = ... end *)
+  (* must be one single recursive type decl *)
   | {pmb_name = {txt = name};
      pmb_loc = loc;
      pmb_expr =
@@ -181,6 +181,11 @@ let language_of_module =
       npl_name = name;
       npl_nonterms = nonterms}
 
+  (* module L = struct
+       include L'
+       type nt = ...
+     end *)
+  (* must be a single include + a single recursive type decl*)
   | {pmb_name = {txt = name};
      pmb_loc = loc;
      pmb_expr =
@@ -193,22 +198,26 @@ let language_of_module =
                          Pmod_ident {txt = Lident ext_lang_name}}}};
               {pstr_desc = Pstr_type (Recursive, type_decls)} ]}}
     ->
+     (* the language we are extending *)
      let ext_lang =
-       find_language
+       find_language ext_lang_name
          ~exn:(Location.Error
                  (Location.errorf ~loc
                     "language %S has not been defined" ext_lang_name))
-         ext_lang_name
      in
 
+     (* new nonterminal names *)
      let nt_names = List.map (fun {ptype_name = {txt}} -> txt) type_decls in
+     (* old nonterminal names *)
      let nt_names' = List.map (fun {npnt_name} -> npnt_name) ext_lang.npl_nonterms in
+     (* new nonterminals *)
      let nonterms =
        List.map (nonterm_of_type_decl
                    ~extending:ext_lang
                    ~nt_names:(nt_names @ nt_names'))
          type_decls
      in
+     (* old nonterminals (only the unmodified ones) *)
      let nonterms' =
        List.filter_map (fun name ->
            if List.mem name nt_names then
@@ -217,6 +226,7 @@ let language_of_module =
              Some (language_nonterm ext_lang name))
          nt_names'
      in
+
      {npl_loc = loc;
       npl_name = name;
       npl_nonterms = nonterms @ nonterms'}

@@ -36,6 +36,16 @@ type np_language =
 let languages : (string, np_language) Hashtbl.t
   = Hashtbl.create 30
 
+(** globally registers the given language. raises
+    [Location.Error] if a language with the same
+    name is already defined. **)
+let add_language lang =
+  if Hashtbl.mem languages lang.npl_name then
+    Location.raise_errorf ~loc:lang.npl_loc
+      "language %S defined already"
+      lang.npl_name
+  else
+    Hashtbl.add languages lang.npl_name lang
 
 (** returns the language with the given name. raises
     [Not_found] if no such language has been defined. **)

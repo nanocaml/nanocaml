@@ -18,7 +18,8 @@ type np_production =
 (** a nonterminal is a type defined by a nanopass language, e.g.
     [expr], [stmt]. **)
 type np_nonterm =
-  { npnt_name : string
+  { npnt_loc : Location.t
+  ; npnt_name : string
   ; npnt_productions : np_production list }
 
 (** a nanopass language, e.g. L0, L1 (as traditionally named) **)
@@ -92,16 +93,17 @@ let production_of_row_field ~nt_names =
        "invalid nanopass production form"
 
 (** convert [type_declaration] into nanopass nonterminal **)
-let nonterm_of_type_decl ?extending ~nt_names =
-  function
+let nonterm_of_type_decl ?extending ~nt_names = function
   (* type nt = [ `A | `B ... ] *)
   | {ptype_name = {txt = name};
+     ptype_loc = loc;
      ptype_params = [];
      ptype_kind = Ptype_abstract;
      ptype_manifest = Some {ptyp_desc = Ptyp_variant (rows, Closed, _)}}
     ->
      let prods = List.map (production_of_row_field ~nt_names) rows in
-     {npnt_name = name;
+     {npnt_loc = loc;
+      npnt_name = name;
       npnt_productions = prods}
 
   (* type nt = { add : [ `A ... ] ; del : [ `B ... ] } *)
@@ -155,7 +157,8 @@ let nonterm_of_type_decl ?extending ~nt_names =
      in
 
      let prods = old_nontem.npnt_productions |> del |> add in
-     {npnt_name = name;
+     {npnt_loc = loc;
+      npnt_name = name;
       npnt_productions = prods}
 
   (* invalid nonterminal *)
@@ -164,8 +167,7 @@ let nonterm_of_type_decl ?extending ~nt_names =
        "invalid nanopass type declaration form"
 
 (** convert [module_binding] into nanopass language **)
-let language_of_module =
-  function
+let language_of_module = function
   (* module L = struct type nt = ... end *)
   (* must be one single recursive type decl *)
   | {pmb_name = {txt = lang_name};

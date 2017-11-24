@@ -34,10 +34,10 @@ let tt =
       "type_of_core_type(1)" >::
         begin fun _ ->
         match t_of_ct [%type: (int * expr) list] with
-        | NPtype_list
-          (NPtype_tuple
-             [NPtype_term {ptyp_desc = Ptyp_constr ({txt = Lident "int"}, [])};
-              NPtype_nonterm "expr"]) -> ()
+        | NP_list
+          (NP_tuple
+             [NP_term {ptyp_desc = Ptyp_constr ({txt = Lident "int"}, [])};
+              NP_nonterm "expr"]) -> ()
         | _ ->
            assert_failure "[(int * expr) list] does not match"
         end;
@@ -45,14 +45,14 @@ let tt =
       "type_of_core_type(2)" >::
         begin fun _ ->
         match t_of_ct [%type: int list] with
-        | NPtype_term {ptyp_desc = Ptyp_constr ({txt = Lident "list"}, _)} -> ()
+        | NP_term {ptyp_desc = Ptyp_constr ({txt = Lident "list"}, _)} -> ()
         | _ -> assert_failure "[int list] should be a list terminal"
         end;
 
       "type_of_core_type(3)" >::
         begin fun _ ->
         match t_of_ct [%type: int * string] with
-        | NPtype_term {ptyp_desc = Ptyp_tuple [_; _]} -> ()
+        | NP_term {ptyp_desc = Ptyp_tuple [_; _]} -> ()
         | _ -> assert_failure "[int * string] should be a tuple terminal"
         end;
 
@@ -97,8 +97,8 @@ let tt =
         in
         assert_equal "L0" lang.npl_name;
         assert_equal ["a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms);
-        assert_equal [ {npp_name = "A"; npp_args = [ NPtype_nonterm "b" ]};
-                       {npp_name = "B"; npp_args = [ NPtype_nonterm "a" ]} ]
+        assert_equal [ {npp_name = "A"; npp_args = [ NP_nonterm "b" ]};
+                       {npp_name = "B"; npp_args = [ NP_nonterm "a" ]} ]
           (lang.npl_nonterms
            |> List.map (fun nt -> nt.npnt_productions)
            |> List.concat);

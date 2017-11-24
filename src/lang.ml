@@ -4,10 +4,10 @@ open Ast
 (** a type recognized by nanopass; usually a part of a production.
     e.g. [string], [stmt], [(string * expr) list] **)
 type np_type =
-  | NPtype_term of core_type      (** external types are "terminals" **)
-  | NPtype_nonterm of string      (** named nonterminal **)
-  | NPtype_tuple of np_type list  (** [t * u * ...] **)
-  | NPtype_list of np_type        (** [t list] **)
+  | NP_term of core_type      (** external types are "terminals" **)
+  | NP_nonterm of string      (** named nonterminal **)
+  | NP_tuple of np_type list  (** [t * u * ...] **)
+  | NP_list of np_type        (** [t list] **)
 
 (** a production is one of the forms in a nonterminal -- essentially
     just a variant, e.g. [`Var], [`App]. **)
@@ -60,23 +60,23 @@ let type_of_core_type ~nt_names t =
     (* nonterminal: *)
     | Ptyp_constr ({txt = Longident.Lident name}, [])
          when List.mem name nt_names ->
-       NPtype_nonterm name
+       NP_nonterm name
     (* tuple: *)
     | Ptyp_tuple typs ->
        let npts = List.map cvt typs in
-       if npts |> List.for_all (function | NPtype_term _ -> true | _ -> false) then
-         NPtype_term ptyp (* [<term> * <term>] is a terminal *)
+       if npts |> List.for_all (function | NP_term _ -> true | _ -> false) then
+         NP_term ptyp (* [<term> * <term>] is a terminal *)
        else
-         NPtype_tuple npts
+         NP_tuple npts
     (* list: *)
     | Ptyp_constr ({txt = Longident.Lident "list"}, [elem]) ->
        begin match cvt elem with
-       | NPtype_term _ -> NPtype_term ptyp (* [<term> list] is a terminal, not a list *)
-       | npt -> NPtype_list npt
+       | NP_term _ -> NP_term ptyp (* [<term> list] is a terminal, not a list *)
+       | npt -> NP_list npt
        end
     (* otherwise, it's a terminal: *)
     | _ ->
-       NPtype_term ptyp
+       NP_term ptyp
   in
   cvt t
 
@@ -168,7 +168,7 @@ let language_of_module =
   function
   (* module L = struct type nt = ... end *)
   (* must be one single recursive type decl *)
-  | {pmb_name = {txt = name};
+  | {pmb_name = {txt = lang_name};
      pmb_loc = loc;
      pmb_expr =
        {pmod_desc =
@@ -178,7 +178,7 @@ let language_of_module =
      let nt_names = List.map (fun {ptype_name = {txt}} -> txt) type_decls in
      let nonterms = List.map (nonterm_of_type_decl ~nt_names) type_decls in
      {npl_loc = loc;
-      npl_name = name;
+      npl_name = lang_name;
       npl_nonterms = nonterms}
 
   (* module L = struct
@@ -186,7 +186,7 @@ let language_of_module =
        type nt = ...
      end *)
   (* must be a single include + a single recursive type decl*)
-  | {pmb_name = {txt = name};
+  | {pmb_name = {txt = lang_name};
      pmb_loc = loc;
      pmb_expr =
        {pmod_desc =
@@ -228,7 +228,7 @@ let language_of_module =
      in
 
      {npl_loc = loc;
-      npl_name = name;
+      npl_name = lang_name;
       npl_nonterms = nonterms @ nonterms'}
 
   | {pmb_loc = loc} ->

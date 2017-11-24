@@ -30,9 +30,9 @@ type np_language =
   }
 
 
-(** global table of all defined languages.
-    TODO: nv wants to make this into a real database,
-      which would allow caching, cross-file nanopass, etc. **)
+(** global table of all defined languages. **)
+(* TODO: nv wants to make this into a real database,
+     which would allow caching, cross-file nanopass, etc. *)
 let languages : (string, np_language) Hashtbl.t
   = Hashtbl.create 30
 

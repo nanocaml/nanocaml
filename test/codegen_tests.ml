@@ -24,4 +24,21 @@ let tt =
                      NP_nonterm "expr" ])));
         end;
 
+      "gen_type_decl(1)" >::
+        begin fun _ ->
+        assert_equal
+          (Type.mk ~loc
+             ~manifest:(Typ.variant ~loc
+                          [ Rtag ("Zero", [], true, []);
+                            Rtag ("Succ", [], false, [ ct_expr ]) ]
+                          Closed None)
+             {txt = "expr"; loc})
+          (gen_type_decl
+             {npnt_name = "expr";
+              npnt_loc = loc;
+              npnt_productions =
+                [ {npp_name = "Zero"; npp_args = []};
+                  {npp_name = "Succ"; npp_args = [ NP_nonterm "expr" ]} ]})
+        end;
+
     ]

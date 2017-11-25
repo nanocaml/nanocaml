@@ -2,6 +2,7 @@ open OUnit2
 open Migrate_parsetree
 open Ast_405.Parsetree
 open Ast_405.Longident
+open Ast_405.Ast_helper
 
 let stri_type_decl stri =
   match stri.pstr_desc with
@@ -12,6 +13,12 @@ let stri_mod_bind stri =
   match stri.pstr_desc with
   | Pstr_module mb -> mb
   | _ -> raise (Failure "incorrect structure item accessor")
+
+let expr_function_cases e =
+  match e.pexp_desc with
+  | Pexp_function cases -> cases
+  | _ -> raise (Failure "incorrect expression accessor")
+
 
 let () =
   stri_mod_bind
@@ -25,10 +32,12 @@ let () =
 let tt =
   "parsing" >:::
     let open Nanocaml.Lang in
+    let open Nanocaml.Pass in
     let nt_names = ["expr"; "stmt"] in
     let t_of_ct = type_of_core_type ~nt_names in
     let nt_of_td = nonterm_of_type_decl ~nt_names in
     let l_of_mb = language_of_module in
+    let loc = !default_loc in
     [
 
       "type_of_core_type(1)" >::
@@ -148,5 +157,33 @@ let tt =
         assert_equal ["AB"; "A0"] (List.map (fun pr -> pr.nppr_name) a_prods);
         end;
 
+      "processor_of_rhs(1)" >::
+        begin fun _ ->
+        let impl = [%expr function
+                       | `Var x -> `Var (find x)
+                       | `Let (x, e[@r], e') -> push x; expr e']
+        in
+        match processor_of_rhs ~name:"expr" ~loc
+                [%expr
+                    fun x ~y -> [%e impl]
+                ] with
+        | {npc_name = "expr";
+           npc_args = [ (Asttypes.Nolabel, _, {ppat_desc = Ppat_var {txt = "x"}});
+                        (Asttypes.Labelled "y", _, {ppat_desc = Ppat_var {txt = "y"}}) ];
+           npc_clauses = cases}
+          ->
+           assert_equal (expr_function_cases impl) cases
+        | _ -> assert_failure "expr processor does not match"
+        end;
+
+      "processor_of_rhs(2)" >::
+        begin fun _ ->
+        try
+          [%expr fun x y -> 0]
+          |> processor_of_rhs ~name:"expr" ~loc
+          |> ignore;
+          assert_failure "expected processor to fail"
+        with Location.Error _ -> ()
+        end;
 
     ]

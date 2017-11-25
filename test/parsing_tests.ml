@@ -25,14 +25,18 @@ let expr_function_cases e =
   | _ -> raise (Failure "incorrect expression accessor")
 
 
-let () =
+let test_L0 =
   stri_mod_bind
     [%stri module Test_L0 = struct
        type a = [ `A of b | `A0 of a ]
        and b = [ `B of a ]
      end]
   |> Nanocaml.Lang.language_of_module
-  |> Hashtbl.add Nanocaml.Lang.languages "Test_L0"
+
+let test_L0_a = Nanocaml.Lang.language_nonterm test_L0 "a"
+
+let () =
+  Hashtbl.add Nanocaml.Lang.languages "Test_L0" test_L0
 
 let tt =
   "parsing" >:::
@@ -168,17 +172,18 @@ let tt =
                        | `Var x -> `Var (find x)
                        | `Let (x, e[@r], e') -> push x; expr e']
         in
-        match processor_of_rhs ~name:"expr" ~loc
+        match processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
                 [%expr
                     fun x ~y -> [%e impl]
                 ] with
-        | {npc_name = "expr";
-           npc_nonterm = "expr";
+        | {npc_name = "a";
+           npc_nonterm = nt;
            npc_args = [ (Asttypes.Nolabel, _, {ppat_desc = Ppat_var {txt = "x"}});
                         (Asttypes.Labelled "y", _, {ppat_desc = Ppat_var {txt = "y"}}) ];
            npc_clauses = cases}
           ->
-           assert_equal (expr_function_cases impl) cases
+           assert_equal test_L0_a nt;
+           assert_equal (expr_function_cases impl) cases;
         | _ -> assert_failure "expr processor does not match"
         end;
 
@@ -186,7 +191,7 @@ let tt =
         begin fun _ ->
         try
           [%expr fun x y -> 0]
-          |> processor_of_rhs ~name:"expr" ~loc
+          |> processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
           |> ignore;
           assert_failure "expected processor to fail"
         with Location.Error _ -> ()
@@ -241,7 +246,7 @@ let tt =
            assert_equal "Test_L0" li.npl_name;
            assert_equal "Test_L0" lo.npl_name;
            assert_equal "a" a_proc.npc_name;
-           assert_equal "a" a_proc.npc_nonterm;
+           assert_equal test_L0_a a_proc.npc_nonterm;
            assert_equal 1 (List.length a_proc.npc_clauses);
 
            let body = [%expr 1 + 2 + 3] in

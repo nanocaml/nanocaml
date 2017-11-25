@@ -7,7 +7,7 @@ type fun_arg = Asttypes.arg_label * expression option * pattern
     between languages, in a pass **)
 type np_processor =
   { npc_name : string
-  ; npc_nonterm : string
+  ; npc_nonterm : Lang.np_nonterm
   ; npc_loc : Location.t
   ; npc_args : fun_arg list
   ; npc_clauses : case list }
@@ -24,7 +24,7 @@ type np_pass =
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)
-let processor_of_rhs ~name ?(nonterm=name) ~loc e0 =
+let processor_of_rhs ~name ~nonterm ~loc e0 =
   let rec get_args acc = function
     | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} ->
        get_args ((lbl, dflt, pat)::acc) body
@@ -118,12 +118,13 @@ let pass_of_value_binding = function
              ->
               (* TODO: naming scheme for processors;
                  nonterm configurable using attributes? *)
-              let nonterm = name in
-              Lang.language_nonterm l0 ~name:nonterm
-                ~exn:(Location.Error
-                        (Location.errorf ~loc
-                           "no such nonterminal %S in language %S" nonterm l0.Lang.npl_name))
-              |> ignore;
+              let nt_name = name in
+              let nonterm =
+                Lang.language_nonterm l0 ~name:nt_name
+                  ~exn:(Location.Error
+                          (Location.errorf ~loc
+                             "no such nonterminal %S in language %S" nt_name l0.Lang.npl_name))
+              in
               processor_of_rhs ~name ~nonterm ~loc proc_rhs
 
            | {pvb_loc = loc} ->

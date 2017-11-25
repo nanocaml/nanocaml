@@ -66,23 +66,22 @@ let pass_of_value_binding = function
      pvb_expr = e0;
      pvb_attributes = pass_attr::_} ->
 
-     (* parse language names from [[@pass L0 --> L1]] *)
-     let l0_name, l0_loc, l1_name, l1_loc =
-       match snd pass_attr with
-       | PStr [ {pstr_desc = Pstr_eval (lang_expr, [])} ] ->
-          extract_pass_sig lang_expr
-       | _ ->
-          Location.raise_errorf ~loc:(fst pass_attr).loc
-            "invalid [@pass] syntax"
-     in
-
+     (* parse language from [[@pass L0 --> L1]] *)
      let find_lang l loc =
        Lang.find_language l
          ~exn:(Location.Error
                  (Location.errorf ~loc "language %S has not been defined" l))
      in
-     let l0 = find_lang l0_name l0_loc in
-     let l1 = find_lang l1_name l1_loc in
+     let l0, l1 =
+       match snd pass_attr with
+       | PStr [ {pstr_desc = Pstr_eval (lang_expr, [])} ] ->
+          let l0_name, l0_loc, l1_name, l1_loc = extract_pass_sig lang_expr in
+          find_lang l0_name l0_loc,
+          find_lang l1_name l1_loc
+       | _ ->
+          Location.raise_errorf ~loc:(fst pass_attr).loc
+            "invalid [@pass] syntax"
+     in
 
      (* convert expression [e] into [f, vbs, body], where
         [vbs] are the value_bindings of the processors, [body]
@@ -119,7 +118,13 @@ let pass_of_value_binding = function
              ->
               (* TODO: naming scheme for processors;
                  nonterm configurable using attributes? *)
-              processor_of_rhs ~name ~loc proc_rhs
+              let nonterm = name in
+              Lang.language_nonterm l0 ~name:nonterm
+                ~exn:(Location.Error
+                        (Location.errorf ~loc
+                           "no such nonterminal %S in language %S" nonterm l0.Lang.npl_name))
+              |> ignore;
+              processor_of_rhs ~name ~nonterm ~loc proc_rhs
 
            | {pvb_loc = loc} ->
               Location.raise_errorf ~loc

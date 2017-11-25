@@ -259,8 +259,58 @@ let tt =
            end
 
         | _ -> assert_failure "pass has wrong structure"
-        end
+        end;
 
-          (* TODO: exception-raising tests for pass_of_value_binding *)
+      "pass_of_value_binding(2)" >::
+        begin fun _ ->
+        try
+          stri_value_binding
+            [%stri let[@pass Test_L0 --> L1] foo =
+               let rec a = function | `A _ -> `A0
+               in a ]
+          |> pass_of_value_binding
+          |> ignore;
+          assert_failure "expected failure for missing language"
+        with Location.Error _ -> ()
+        end;
+
+      "pass_of_value_binding(3)" >::
+        begin fun _ ->
+        try
+          stri_value_binding
+            [%stri let[@pass Test_L0 --> Test_L0] foo =
+               let rec c = function
+                 | `A _ -> `A0
+               in c ]
+          |> pass_of_value_binding
+          |> ignore;
+          assert_failure "expected failure for missing nonterminal"
+        with Location.Error _ -> ()
+        end;
+
+      "pass_of_value_binding(4)" >::
+        begin fun _ ->
+        try
+          stri_value_binding
+            [%stri let[@pass Test_L0 --> Test_L0] foo = 0 ]
+          |> pass_of_value_binding
+          |> ignore;
+          assert_failure "expected failure for missing productions letrec"
+        with Location.Error _ -> ()
+        end;
+
+      "pass_of_value_binding(5)" >::
+        begin fun _ ->
+        try
+          stri_value_binding
+            [%stri let[@pass Test_L0 --> Test_L0] foo =
+               let a = function
+                 | `A _ -> `A0
+               in a ]
+          |> pass_of_value_binding
+          |> ignore;
+          assert_failure "expected failure for missing 'rec'"
+        with Location.Error _ -> ()
+        end;
 
     ]

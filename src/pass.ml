@@ -24,7 +24,7 @@ type np_pass =
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)
-let processor_of_rhs ~name ~loc e0 =
+let processor_of_rhs ~name ?(nonterm=name) ~loc e0 =
   let rec get_args acc = function
     | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} ->
        get_args ((lbl, dflt, pat)::acc) body
@@ -36,7 +36,7 @@ let processor_of_rhs ~name ~loc e0 =
   in
   let args, cases = get_args [] e0 in
   {npc_name = name;
-   npc_nonterm = name;
+   npc_nonterm = nonterm;
    npc_loc = loc;
    npc_args = args;
    npc_clauses = cases}

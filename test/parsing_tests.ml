@@ -168,6 +168,7 @@ let tt =
                     fun x ~y -> [%e impl]
                 ] with
         | {npc_name = "expr";
+           npc_nonterm = "expr";
            npc_args = [ (Asttypes.Nolabel, _, {ppat_desc = Ppat_var {txt = "x"}});
                         (Asttypes.Labelled "y", _, {ppat_desc = Ppat_var {txt = "y"}}) ];
            npc_clauses = cases}

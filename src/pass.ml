@@ -41,3 +41,19 @@ let processor_of_rhs ~name ?(nonterm=name) ~loc e0 =
    npc_args = args;
    npc_clauses = cases}
 
+
+(** extract [L0] and [L1] out of expression of form [L0 --> L1].
+    returns "L0", loc_L0, "L1", loc_L1 (for this particular example). **)
+let extract_pass_sig = function
+  | {pexp_desc =
+       Pexp_apply
+         ({pexp_desc = Pexp_ident {txt = Lident "-->"}},
+          [ Nolabel, {pexp_desc = Pexp_construct ({txt = Lident l0_name; loc = l0_loc}, None)};
+            Nolabel, {pexp_desc = Pexp_construct ({txt = Lident l1_name; loc = l1_loc}, None)} ])}
+    ->
+     l0_name, l0_loc,
+     l1_name, l1_loc
+
+  | {pexp_loc = loc} ->
+     Location.raise_errorf ~loc
+       "invalid language specification; expected 'LX --> LY'"

@@ -187,4 +187,29 @@ let tt =
         with Location.Error _ -> ()
         end;
 
+      "extract_pass_sig(1)" >::
+        begin fun _ ->
+        let l0, _, l1, _ = extract_pass_sig [%expr La --> Lb] in
+        assert_equal "La" l0;
+        assert_equal "Lb" l1;
+        end;
+
+      "extract_pass_sig(2)" >::
+        begin fun _ ->
+        try
+          extract_pass_sig [%expr la --> Lb]
+          |> ignore;
+          assert_failure "expected pass_sig to fail (non module argument)"
+        with Location.Error _ -> ()
+        end;
+
+      "extract_pass_sig(3)" >::
+        begin fun _ ->
+        try
+          extract_pass_sig [%expr (-->) La Lb Lc]
+          |> ignore;
+          assert_failure "expected pass_sig to fail (too many arguments)"
+        with Location.Error _ -> ()
+        end;
+
     ]

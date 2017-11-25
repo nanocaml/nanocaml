@@ -66,8 +66,8 @@ let tt =
         with
         | {npnt_name = "expr";
            npnt_productions = [
-               {npp_name = "Var"};
-               {npp_name = "Int"} ]} -> ()
+               {nppr_name = "Var"};
+               {nppr_name = "Int"} ]} -> ()
         | _ ->
            assert_failure "expr nonterm has the wrong structure"
         end;
@@ -97,8 +97,8 @@ let tt =
         in
         assert_equal "L0" lang.npl_name;
         assert_equal ["a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms);
-        assert_equal [ {npp_name = "A"; npp_args = [ NP_nonterm "b" ]};
-                       {npp_name = "B"; npp_args = [ NP_nonterm "a" ]} ]
+        assert_equal [ {nppr_name = "A"; nppr_args = [ NP_nonterm "b" ]};
+                       {nppr_name = "B"; nppr_args = [ NP_nonterm "a" ]} ]
           (lang.npl_nonterms
            |> List.map (fun nt -> nt.npnt_productions)
            |> List.concat);
@@ -145,7 +145,7 @@ let tt =
         assert_equal ["a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms);
         let a_nt = List.find (fun nt -> nt.npnt_name = "a") lang.npl_nonterms in
         let a_prods = a_nt.npnt_productions in
-        assert_equal ["AB"; "A0"] (List.map (fun pr -> pr.npp_name) a_prods);
+        assert_equal ["AB"; "A0"] (List.map (fun pr -> pr.nppr_name) a_prods);
         end;
 
 

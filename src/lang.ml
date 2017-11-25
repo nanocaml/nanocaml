@@ -12,8 +12,8 @@ type np_type =
 (** a production is one of the forms in a nonterminal -- essentially
     just a variant, e.g. [`Var], [`App]. **)
 type np_production =
-  { npp_name : string
-  ; npp_args : np_type list }
+  { nppr_name : string
+  ; nppr_args : np_type list }
 
 (** a nonterminal is a type defined by a nanopass language, e.g.
     [expr], [stmt]. **)
@@ -95,8 +95,8 @@ let type_of_core_type ~nt_names t =
 let production_of_row_field ~nt_names =
   function
   | Rtag (name, _, _, args) ->
-     {npp_name = name;
-      npp_args = List.map (type_of_core_type ~nt_names) args}
+     {nppr_name = name;
+      nppr_args = List.map (type_of_core_type ~nt_names) args}
 
   | Rinherit {ptyp_loc = loc} ->
      Location.raise_errorf ~loc
@@ -160,7 +160,7 @@ let nonterm_of_type_decl ?extending ~nt_names = function
      let del =
        Option.map_default
          (fun del_prs ->
-           let keep p = List.for_all (fun p' -> p.npp_name <> p'.npp_name) del_prs in
+           let keep p = List.for_all (fun p' -> p.nppr_name <> p'.nppr_name) del_prs in
            List.filter keep)
          identity
          (get_prods "del")

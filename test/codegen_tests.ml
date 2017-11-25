@@ -37,8 +37,8 @@ let tt =
              {npnt_name = "expr";
               npnt_loc = loc;
               npnt_productions =
-                [ {npp_name = "Zero"; npp_args = []};
-                  {npp_name = "Succ"; npp_args = [ NP_nonterm "expr" ]} ]})
+                [ {nppr_name = "Zero"; nppr_args = []};
+                  {nppr_name = "Succ"; nppr_args = [ NP_nonterm "expr" ]} ]})
         end;
 
       "gen_module_binding(1)" >::
@@ -67,11 +67,11 @@ let tt =
                 [ {npnt_name = "a";
                    npnt_loc = loc;
                    npnt_productions =
-                     [ {npp_name = "A"; npp_args = []} ]};
+                     [ {nppr_name = "A"; nppr_args = []} ]};
                   {npnt_name = "b";
                    npnt_loc = loc;
                    npnt_productions =
-                     [ {npp_name = "B"; npp_args = [ NP_term ct_int ]} ]} ]})
+                     [ {nppr_name = "B"; nppr_args = [ NP_term ct_int ]} ]} ]})
         end;
 
     ]

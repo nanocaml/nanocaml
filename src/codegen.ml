@@ -32,7 +32,7 @@ let gen_type_decl
           {npnt_loc = loc;
            npnt_name = nt_name;
            npnt_productions = prds} =
-  let row_of_prod {npp_name = name; npp_args = args} =
+  let row_of_prod {nppr_name = name; nppr_args = args} =
     Rtag (name,
           [],
           List.is_empty args,

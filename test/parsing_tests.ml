@@ -14,6 +14,11 @@ let stri_mod_bind stri =
   | Pstr_module mb -> mb
   | _ -> raise (Failure "incorrect structure item accessor")
 
+let stri_value_binding e =
+  match e.pstr_desc with
+  | Pstr_value (_, [vb]) -> vb
+  | _ -> raise (Failure "incorrect expression accessor")
+
 let expr_function_cases e =
   match e.pexp_desc with
   | Pexp_function cases -> cases
@@ -211,5 +216,51 @@ let tt =
           assert_failure "expected pass_sig to fail (too many arguments)"
         with Location.Error _ -> ()
         end;
+
+      "pass_of_value_binding(1)" >::
+        begin fun _ ->
+        match stri_value_binding
+                [%stri let[@pass Test_L0 --> Test_L0] remove_a ini =
+                   let tmp = 0 in
+                   let rec a = function
+                     | `A _ -> `A0
+                   in
+                   a ini]
+              |> pass_of_value_binding
+        with
+        | {npp_name = "remove_a";
+           npp_input = li;
+           npp_output = lo;
+           npp_pre = pre;
+           npp_post = {pexp_desc =
+                         Pexp_apply
+                           ({pexp_desc = Pexp_ident {txt = Lident "a"}},
+                            [ Nolabel, {pexp_desc = Pexp_ident {txt = Lident "ini"}} ])};
+           npp_procs = [ a_proc ]}
+          ->
+           assert_equal "Test_L0" li.npl_name;
+           assert_equal "Test_L0" lo.npl_name;
+           assert_equal "a" a_proc.npc_name;
+           assert_equal "a" a_proc.npc_nonterm;
+           assert_equal 1 (List.length a_proc.npc_clauses);
+
+           let body = [%expr 1 + 2 + 3] in
+           begin match pre body with
+           | {pexp_desc =
+                Pexp_fun (Nolabel, None, (* fun ini -> *)
+                          {ppat_desc = Ppat_var {txt = "ini"}},
+                          {pexp_desc =
+                             Pexp_let (Nonrecursive, (* let tmp = .. in *)
+                                       [ {pvb_pat = {ppat_desc = Ppat_var {txt = "tmp"}}} ],
+                                       body')})}
+             ->
+              assert_equal body body'
+           | _ -> assert_failure "prefix has wrong structure"
+           end
+
+        | _ -> assert_failure "pass has wrong structure"
+        end
+
+          (* TODO: exception-raising tests for pass_of_value_binding *)
 
     ]

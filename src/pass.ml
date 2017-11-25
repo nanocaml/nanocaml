@@ -57,3 +57,85 @@ let extract_pass_sig = function
   | {pexp_loc = loc} ->
      Location.raise_errorf ~loc
        "invalid language specification; expected 'LX --> LY'"
+
+
+(** convert a [value_binding] into a [np_pass] *)
+let pass_of_value_binding = function
+  | {pvb_pat = {ppat_desc = Ppat_var {txt = name}};
+     pvb_loc = loc;
+     pvb_expr = e0;
+     pvb_attributes = pass_attr::_} ->
+
+     (* parse language names from [[@pass L0 --> L1]] *)
+     let l0_name, l0_loc, l1_name, l1_loc =
+       match snd pass_attr with
+       | PStr [ {pstr_desc = Pstr_eval (lang_expr, [])} ] ->
+          extract_pass_sig lang_expr
+       | _ ->
+          Location.raise_errorf ~loc:(fst pass_attr).loc
+            "invalid [@pass] syntax"
+     in
+
+     let find_lang l loc =
+       Lang.find_language l
+         ~exn:(Location.Error
+                 (Location.errorf ~loc "language %S has not been defined" l))
+     in
+     let l0 = find_lang l0_name l0_loc in
+     let l1 = find_lang l1_name l1_loc in
+
+     (* convert expression [e] into [f, vbs, body], where
+        [vbs] are the value_bindings of the processors, [body]
+        is the final expression, and [f] is a function that inserts
+        its argument in place of the processors/body. *)
+     let rec extract_definitions f =
+       function
+       | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} as e ->
+          extract_definitions
+            (fun e' -> f {e with pexp_desc = Pexp_fun (lbl, dflt, pat, e')})
+            body
+
+       | {pexp_desc = Pexp_let (recf, vbs, ({pexp_desc = Pexp_let _} as body))} as e ->
+          extract_definitions
+            (fun e' -> f {e with pexp_desc = Pexp_let (recf, vbs, e')})
+            body
+
+       | {pexp_desc = Pexp_let (Recursive, vbs, body)} ->
+          f, vbs, body
+
+       | {pexp_loc = loc} ->
+          Location.raise_errorf ~loc
+            "let[@pass] must end in recursive let, followed by a single expression"
+     in
+     let pre, bindings, post = extract_definitions identity e0 in
+
+     (* parse processors from bindings in final letrec *)
+     let procs =
+       List.map (function
+           | {pvb_pat = {ppat_desc = Ppat_var {txt = name}};
+              pvb_expr = proc_rhs;
+              pvb_loc = loc;
+              pvb_attributes = ats}
+             ->
+              (* TODO: naming scheme for processors;
+                 nonterm configurable using attributes? *)
+              processor_of_rhs ~name ~loc proc_rhs
+
+           | {pvb_loc = loc} ->
+              Location.raise_errorf ~loc
+                "invalid processor definition")
+         bindings
+     in
+
+     {npp_name = name;
+      npp_loc = loc;
+      npp_input = l0;
+      npp_output = l1;
+      npp_pre = pre;
+      npp_post = post;
+      npp_procs = procs}
+
+
+  | {pvb_loc = loc} ->
+     Location.raise_errorf ~loc
+       "invalid pass definition"

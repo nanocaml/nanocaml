@@ -4,11 +4,11 @@ open Ast
 type fun_arg = Asttypes.arg_label * expression option * pattern
 
 (** represents a processor definition (a transformation
-    between languages, in a pass **)
+    between nonterminals in a nanopass) **)
 type np_processor =
   { npc_name : string
-  ; npc_nonterm : Lang.np_nonterm
   ; npc_loc : Location.t
+  ; npc_nonterm : Lang.np_nonterm
   ; npc_args : fun_arg list
   ; npc_clauses : case list }
 
@@ -27,7 +27,8 @@ type np_pass =
 let processor_of_rhs ~name ~nonterm ~loc e0 =
   let rec get_args acc = function
     | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} ->
-       get_args ((lbl, dflt, pat)::acc) body
+       let arg = lbl, dflt, pat in
+       get_args (arg::acc) body
     | {pexp_desc = Pexp_function cases } ->
        List.rev acc, cases
     | {pexp_loc = loc} ->

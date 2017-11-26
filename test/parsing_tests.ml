@@ -199,7 +199,7 @@ let tt =
 
       "extract_pass_sig(1)" >::
         begin fun _ ->
-        let l0, _, l1, _ = extract_pass_sig [%expr La --> Lb] in
+        let l0, _, l1, _ = extract_pass_sig [%expr La => Lb] in
         assert_equal "La" l0;
         assert_equal "Lb" l1;
         end;
@@ -207,7 +207,7 @@ let tt =
       "extract_pass_sig(2)" >::
         begin fun _ ->
         try
-          extract_pass_sig [%expr la --> Lb]
+          extract_pass_sig [%expr la => Lb]
           |> ignore;
           assert_failure "expected pass_sig to fail (non module argument)"
         with Location.Error _ -> ()
@@ -216,16 +216,25 @@ let tt =
       "extract_pass_sig(3)" >::
         begin fun _ ->
         try
-          extract_pass_sig [%expr (-->) La Lb Lc]
+          extract_pass_sig [%expr (=>) La Lb Lc]
           |> ignore;
           assert_failure "expected pass_sig to fail (too many arguments)"
+        with Location.Error _ -> ()
+        end;
+
+      "extract_pass_sig(4)" >::
+        begin fun _ ->
+        try
+          extract_pass_sig [%expr La --> Lb]
+          |> ignore;
+          assert_failure "expected pass_sig to fail (wrong arrow)"
         with Location.Error _ -> ()
         end;
 
       "pass_of_value_binding(1)" >::
         begin fun _ ->
         match stri_value_binding
-                [%stri let[@pass Test_L0 --> Test_L0] remove_a ini =
+                [%stri let[@pass Test_L0 => Test_L0] remove_a ini =
                    let tmp = 0 in
                    let rec a = function
                      | `A _ -> `A0
@@ -270,7 +279,7 @@ let tt =
         begin fun _ ->
         try
           stri_value_binding
-            [%stri let[@pass Test_L0 --> L1] foo =
+            [%stri let[@pass Test_L0 => L1] foo =
                let rec a = function | `A _ -> `A0
                in a ]
           |> pass_of_value_binding
@@ -283,7 +292,7 @@ let tt =
         begin fun _ ->
         try
           stri_value_binding
-            [%stri let[@pass Test_L0 --> Test_L0] foo =
+            [%stri let[@pass Test_L0 => Test_L0] foo =
                let rec c = function
                  | `A _ -> `A0
                in c ]
@@ -297,7 +306,7 @@ let tt =
         begin fun _ ->
         try
           stri_value_binding
-            [%stri let[@pass Test_L0 --> Test_L0] foo = 0 ]
+            [%stri let[@pass Test_L0 => Test_L0] foo = 0 ]
           |> pass_of_value_binding
           |> ignore;
           assert_failure "expected failure for missing productions letrec"
@@ -308,7 +317,7 @@ let tt =
         begin fun _ ->
         try
           stri_value_binding
-            [%stri let[@pass Test_L0 --> Test_L0] foo =
+            [%stri let[@pass Test_L0 => Test_L0] foo =
                let a = function
                  | `A _ -> `A0
                in a ]

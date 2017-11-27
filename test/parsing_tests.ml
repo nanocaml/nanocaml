@@ -166,6 +166,40 @@ let tt =
         assert_equal ["AB"; "A0"] (List.map (fun pr -> pr.nppr_name) a_prods);
         end;
 
+      "pattern_of_pattern(1)" >::
+        begin fun _ ->
+        let p1 = [%pat? 3] in
+        let p2 = [%pat? x] in
+        let p3 = [%pat? (_, y)] in
+        assert_equal (NPpat p1) (pattern_of_pattern p1);
+        assert_equal (NPpat_var {txt = "x"; loc = p2.ppat_loc}) (pattern_of_pattern p2);
+        match pattern_of_pattern p3 with
+        | NPpat_tuple {txt = [NPpat_any _; NPpat_var {txt = "y"}]} -> ()
+        | _ -> assert_failure "np_pattern tuple does not match"
+        end;
+
+      "pattern_of_pattern(2)" >::
+        begin fun _ ->
+        match pattern_of_pattern [%pat? x [@l]] with
+        | NPpat_list (NPpat_var {txt = "x"}) -> ()
+        | _ -> assert_failure "np_pattern list does not match"
+        end;
+
+      "pattern_of_pattern(3)" >::
+        begin fun _ ->
+        match pattern_of_pattern [%pat? (x,y) [@r] [@l]] with
+        | NPpat_list (NPpat_cata (NPpat_tuple _, None)) -> ()
+        | _ -> assert_failure "np_pattern cata + list + tuple does not match"
+        end;
+
+      (* currently unimplemented *)
+      (* "pattern_of_pattern(4)" >::
+        begin fun _ ->
+        match pattern_of_pattern [%pat? e' [@r expr]] with
+        | NPpat_cata (NPpat_var _, Some {pexp_desc = Pexp_ident {txt = Lident "expr"}}) -> ()
+        | _ -> assert_failure "np_pattern explicit cata does not match"
+        end; *)
+
       "processor_of_rhs(1)" >::
         begin fun _ ->
         let impl = [%expr function

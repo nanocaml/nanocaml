@@ -45,7 +45,7 @@ let rec pattern_loc = function
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)
-let processor_of_rhs ~name ~nonterm ~loc e0 =
+let rec processor_of_rhs ~name ~nonterm ~loc e0 =
   let rec get_args acc = function
     | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} ->
        let arg = lbl, dflt, pat in
@@ -62,6 +62,25 @@ let processor_of_rhs ~name ~nonterm ~loc e0 =
    npc_loc = loc;
    npc_args = args;
    npc_clauses = cases}
+
+(** convert a [pattern] into a [np_pattern]. **)
+and pattern_of_pattern p =
+  let base_pat =
+    match p.ppat_desc with
+    | Ppat_any -> NPpat_any p.ppat_loc
+    | Ppat_var x -> NPpat_var x
+    | Ppat_tuple ps -> NPpat_tuple {txt = List.map pattern_of_pattern ps; loc = p.ppat_loc}
+    | _ -> NPpat p
+  in
+  p.ppat_attributes
+  |> List.fold_left
+       (fun pat (attr, payload)->
+         let {txt; loc} : string loc = attr in
+         match txt, payload with
+         | "l", _ -> NPpat_list pat
+         | "r", _ -> NPpat_cata (pat, None)
+         | _ -> pat)
+       base_pat
 
 
 let signature_arrow = "=>"

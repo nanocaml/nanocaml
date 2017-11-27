@@ -1,6 +1,7 @@
 open Batteries
 open Ast
 
+type 'a loc = 'a Asttypes.loc
 type fun_arg = Asttypes.arg_label * expression option * pattern
 
 (** represents a processor definition (a transformation
@@ -11,6 +12,16 @@ type np_processor =
   ; npc_nonterm : Lang.np_nonterm
   ; npc_args : fun_arg list
   ; npc_clauses : case list }
+(** represents a pattern in a production. the pattern must be parsed
+    by nanocaml so that we can correctly map over lists and apply
+    catamorphims, e.g. for expressions like [(x, e [@r]) [@l]]. **)
+and np_pattern
+  = NPpat of pattern
+  | NPpat_any of Location.t
+  | NPpat_var of string loc
+  | NPpat_tuple of np_pattern list loc
+  | NPpat_list of np_pattern (* list destructuring, e.g. pat [@l] *)
+  | NPpat_cata of np_pattern * expression option (* [@r <optional explicit cata>] *)
 
 (** represents a nanopass definition **)
 type np_pass =
@@ -21,6 +32,16 @@ type np_pass =
   ; npp_pre : expression -> expression
   ; npp_post : expression
   ; npp_procs : np_processor list }
+
+
+(** returns the [Location.t] of the given pattern. **)
+let rec pattern_loc = function
+  | NPpat {ppat_loc} -> ppat_loc
+  | NPpat_any loc -> loc
+  | NPpat_var {loc} -> loc
+  | NPpat_tuple {loc} -> loc
+  | NPpat_list p -> pattern_loc p
+  | NPpat_cata (p, _) -> pattern_loc p
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)

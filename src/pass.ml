@@ -12,6 +12,7 @@ type np_processor =
   ; npc_nonterm : Lang.np_nonterm
   ; npc_args : fun_arg list
   ; npc_clauses : case list }
+
 (** represents a pattern in a production. the pattern must be parsed
     by nanocaml so that we can correctly map over lists and apply
     catamorphims, e.g. for expressions like [(x, e [@r]) [@l]]. **)
@@ -20,7 +21,7 @@ and np_pattern
   | NPpat_any of Location.t
   | NPpat_var of string loc
   | NPpat_tuple of np_pattern list loc
-  | NPpat_list of np_pattern (* list destructuring, e.g. pat [@l] *)
+  | NPpat_map of np_pattern (* list destructuring, e.g. pat [@l] *)
   | NPpat_cata of np_pattern * expression option (* [@r <optional explicit cata>] *)
 
 (** represents a nanopass definition **)
@@ -35,13 +36,13 @@ type np_pass =
 
 
 (** returns the [Location.t] of the given pattern. **)
-let rec pattern_loc = function
+let rec loc_of_pattern = function
   | NPpat {ppat_loc} -> ppat_loc
   | NPpat_any loc -> loc
   | NPpat_var {loc} -> loc
   | NPpat_tuple {loc} -> loc
-  | NPpat_list p -> pattern_loc p
-  | NPpat_cata (p, _) -> pattern_loc p
+  | NPpat_map p -> loc_of_pattern p
+  | NPpat_cata (p, _) -> loc_of_pattern p
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)
@@ -77,7 +78,7 @@ and pattern_of_pattern p =
        (fun pat (attr, payload)->
          let {txt; loc} : string loc = attr in
          match txt, payload with
-         | "l", _ -> NPpat_list pat
+         | "l", _ -> NPpat_map pat
          | "r", _ -> NPpat_cata (pat, None)
          | _ -> pat)
        base_pat
@@ -86,7 +87,7 @@ and pattern_of_pattern p =
 let signature_arrow = "=>"
 
 (** extract [L0] and [L1] out of expression of form [L0 --> L1].
-    returns "L0", loc_L0, "L1", loc_L1 (for this particular example). **)
+    returns [("L0", loc_L0), ("L1", loc_L1)] (for this particular example). **)
 let extract_pass_sig = function
   | {pexp_desc =
        Pexp_apply
@@ -95,8 +96,8 @@ let extract_pass_sig = function
             Nolabel, {pexp_desc = Pexp_construct ({txt = Lident l1_name; loc = l1_loc}, None)} ])}
        when arrow = signature_arrow
     ->
-     l0_name, l0_loc,
-     l1_name, l1_loc
+     (l0_name, l0_loc),
+     (l1_name, l1_loc)
 
   | {pexp_loc = loc} ->
      Location.raise_errorf ~loc
@@ -120,7 +121,7 @@ let pass_of_value_binding = function
      let l0, l1 =
        match snd pass_attr with
        | PStr [ {pstr_desc = Pstr_eval (lang_expr, [])} ] ->
-          let l0_name, l0_loc, l1_name, l1_loc = extract_pass_sig lang_expr in
+          let (l0_name, l0_loc), (l1_name, l1_loc) = extract_pass_sig lang_expr in
           find_lang l0_name l0_loc,
           find_lang l1_name l1_loc
        | _ ->

@@ -181,14 +181,14 @@ let tt =
       "pattern_of_pattern(2)" >::
         begin fun _ ->
         match pattern_of_pattern [%pat? x [@l]] with
-        | NPpat_list (NPpat_var {txt = "x"}) -> ()
+        | NPpat_map (NPpat_var {txt = "x"}) -> ()
         | _ -> assert_failure "np_pattern list does not match"
         end;
 
       "pattern_of_pattern(3)" >::
         begin fun _ ->
         match pattern_of_pattern [%pat? (x,y) [@r] [@l]] with
-        | NPpat_list (NPpat_cata (NPpat_tuple _, None)) -> ()
+        | NPpat_map (NPpat_cata (NPpat_tuple _, None)) -> ()
         | _ -> assert_failure "np_pattern cata + list + tuple does not match"
         end;
 
@@ -233,7 +233,7 @@ let tt =
 
       "extract_pass_sig(1)" >::
         begin fun _ ->
-        let l0, _, l1, _ = extract_pass_sig [%expr La => Lb] in
+        let (l0, _), (l1, _) = extract_pass_sig [%expr La => Lb] in
         assert_equal "La" l0;
         assert_equal "Lb" l1;
         end;

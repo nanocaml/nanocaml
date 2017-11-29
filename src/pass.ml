@@ -4,9 +4,19 @@ open Ast
 type 'a loc = 'a Asttypes.loc
 type fun_arg = Asttypes.arg_label * expression option * pattern
 
+(** represents a nanopass definition **)
+type np_pass =
+  { npp_name : string
+  ; npp_loc : Location.t
+  ; npp_input : Lang.np_language
+  ; npp_output : Lang.np_language
+  ; npp_pre : expression -> expression
+  ; npp_post : expression
+  ; npp_procs : np_processor list }
+
 (** represents a processor definition (a transformation
     between nonterminals in a nanopass) **)
-type np_processor =
+and np_processor =
   { npc_name : string
   ; npc_loc : Location.t
   ; npc_nonterm : Lang.np_nonterm
@@ -27,16 +37,6 @@ and np_pat
   | NPpat_variant of string * np_pat option * Location.t (* `X p *)
   | NPpat_map of np_pat (* list destructuring, e.g. (p [@l]) *)
   | NPpat_cata of np_pat * expression option (* p [@r <optional explicit cata>] *)
-
-(** represents a nanopass definition **)
-type np_pass =
-  { npp_name : string
-  ; npp_loc : Location.t
-  ; npp_input : Lang.np_language
-  ; npp_output : Lang.np_language
-  ; npp_pre : expression -> expression
-  ; npp_post : expression
-  ; npp_procs : np_processor list }
 
 
 (** returns the [Location.t] of the given pattern. **)

@@ -24,12 +24,45 @@ let rec typeck_pass
             npp_procs = procs} as pass) =
   pass
 
+(** returns an [exn] for type errors. **)
+(* TODO: better error messages *)
+and typeck_err ~loc typ =
+  Location.Error
+    (Location.errorf ~loc
+       "nanopass pattern type mismatch")
+
 
 (** typecheck a single pattern, with the given expected type **)
 and typeck_pat ~pass typ pat =
   match pat with
   | NPpat_any _ | NPpat_var _ -> pat
   | _ -> raise (Failure "unimplemented pattern typechecking")
+
+(** typecheck the (optional) argument to a nontermal given [pr_name],
+    the name of the production it is associated with. [nt_name] must
+    be a valid nonterminal in the input language. *)
+and typeck_nonterm ~pass ~loc nt_name pr_name arg =
+  let lang = pass.npp_input in
+  let nonterm = language_nonterm lang nt_name in
+  let arg_typ =
+    try
+      List.find_map
+        (fun {nppr_name = n; nppr_arg = a} ->
+          if pr_name = n then Some a
+          else None)
+        nonterm.npnt_productions
+    with Not_found ->
+      Location.raise_errorf ~loc
+        "nonterminal %S has no production %S" nt_name pr_name
+  in
+  match arg_typ, arg with
+  | Some typ, None -> Location.raise_errorf ~loc
+                        "expected argument to production %S" pr_name
+  | None, Some pat -> Location.raise_errorf ~loc
+                        "unexpected argument to production %S" pr_name
+  | None, None -> None
+  | Some typ, Some pat -> Some (typeck_pat ~pass typ pat)
+
 
 (** generate an appropriate catamorphism function expression for the
     given nonterminal. **)

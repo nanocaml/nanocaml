@@ -69,4 +69,30 @@ let tt =
         assert_equal var_x (TC.typeck_pat ~pass:pass1 (NP_nonterm "b") var_x);
         end;
 
+      "typeck_nonterm(1)" >::
+        begin fun _ ->
+        assert_equal None (TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" None);
+        assert_equal (Some var_x) (TC.typeck_nonterm ~pass:pass1 ~loc "a" "A" (Some var_x));
+        end;
+
+      "typeck_nonterm(2)" >::
+        begin fun _ ->
+        try
+          TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" (Some any)
+          |> ignore; assert_failure "expected typeck to fail (nonterm doesn't expect arguments)"
+        with Location.Error e ->
+          assert_bool "contains 'unexpected'"
+            (String.sub e.Location.msg 0 10 = "unexpected");
+        end;
+
+      "typeck_nonterm(3)" >::
+        begin fun _ ->
+        try
+          TC.typeck_nonterm ~pass:pass1 ~loc "a" "A" None
+          |> ignore; assert_failure "expected typeck to fail (nonterm expects arguments)"
+        with Location.Error e ->
+          assert_bool "contains 'expected'"
+            (String.sub e.Location.msg 0 8 = "expected");
+        end;
+
     ]

@@ -19,13 +19,14 @@ and clause = np_pat * expression
     by nanocaml so that we can correctly map over lists and apply
     catamorphims, e.g. for expressions like [(x, e [@r]) [@l]]. **)
 and np_pat
-  = NPpat of pattern
-  | NPpat_any of Location.t
-  | NPpat_var of string loc
-  | NPpat_tuple of np_pat list loc
-  | NPpat_variant of string * np_pat option * Location.t
-  | NPpat_map of np_pat (* list destructuring, e.g. pat [@l] *)
-  | NPpat_cata of np_pat * expression option (* [@r <optional explicit cata>] *)
+  = NPpat of pattern (* <other patterns, like constants or :: > *)
+  | NPpat_any of Location.t (* _ *)
+  | NPpat_var of string loc (* x *)
+  | NPpat_alias of np_pat * string loc (* p as x *)
+  | NPpat_tuple of np_pat list loc (* (p, ...) *)
+  | NPpat_variant of string * np_pat option * Location.t (* `X p *)
+  | NPpat_map of np_pat (* list destructuring, e.g. (p [@l]) *)
+  | NPpat_cata of np_pat * expression option (* p [@r <optional explicit cata>] *)
 
 (** represents a nanopass definition **)
 type np_pass =
@@ -43,6 +44,7 @@ let rec loc_of_pat = function
   | NPpat {ppat_loc} -> ppat_loc
   | NPpat_any loc -> loc
   | NPpat_var {loc} -> loc
+  | NPpat_alias (_, {loc}) -> loc
   | NPpat_tuple {loc} -> loc
   | NPpat_variant (_, _, loc) -> loc
   | NPpat_map p -> loc_of_pat p
@@ -83,6 +85,8 @@ and pat_of_pattern p =
     match p.ppat_desc with
     | Ppat_any -> NPpat_any p.ppat_loc
     | Ppat_var x -> NPpat_var x
+    | Ppat_alias (p, name) ->
+       NPpat_alias (pat_of_pattern p, name)
     | Ppat_tuple ps ->
        NPpat_tuple {txt = List.map pat_of_pattern ps; loc = p.ppat_loc}
     | Ppat_variant (v, arg) ->

@@ -194,9 +194,10 @@ let tt =
 
       "pat_of_pattern(4)" >::
         begin fun _ ->
-        match pat_of_pattern [%pat? (`X (_, _), `Y)] with
+        match pat_of_pattern [%pat? (`X (_, _), (`Y as y))] with
         | NPpat_tuple {txt = [ NPpat_variant ("X", Some (NPpat_tuple _), _);
-                               NPpat_variant ("Y", None, _) ]} -> ()
+                               NPpat_alias (NPpat_variant ("Y", None, _), {txt = "y"}) ]}
+          -> ()
         | _ -> assert_failure "np_pat variant does not match"
         end;
 

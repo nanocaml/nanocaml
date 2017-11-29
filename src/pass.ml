@@ -13,19 +13,19 @@ type np_processor =
   ; npc_args : fun_arg list
   ; npc_clauses : clause list }
 
-and clause = np_pattern * expression
+and clause = np_pat * expression
 
 (** represents a pattern in a production. the pattern must be parsed
     by nanocaml so that we can correctly map over lists and apply
     catamorphims, e.g. for expressions like [(x, e [@r]) [@l]]. **)
-and np_pattern
+and np_pat
   = NPpat of pattern
   | NPpat_any of Location.t
   | NPpat_var of string loc
-  | NPpat_tuple of np_pattern list loc
-  | NPpat_variant of string * np_pattern option * Location.t
-  | NPpat_map of np_pattern (* list destructuring, e.g. pat [@l] *)
-  | NPpat_cata of np_pattern * expression option (* [@r <optional explicit cata>] *)
+  | NPpat_tuple of np_pat list loc
+  | NPpat_variant of string * np_pat option * Location.t
+  | NPpat_map of np_pat (* list destructuring, e.g. pat [@l] *)
+  | NPpat_cata of np_pat * expression option (* [@r <optional explicit cata>] *)
 
 (** represents a nanopass definition **)
 type np_pass =
@@ -39,14 +39,14 @@ type np_pass =
 
 
 (** returns the [Location.t] of the given pattern. **)
-let rec loc_of_pattern = function
+let rec loc_of_pat = function
   | NPpat {ppat_loc} -> ppat_loc
   | NPpat_any loc -> loc
   | NPpat_var {loc} -> loc
   | NPpat_tuple {loc} -> loc
   | NPpat_variant (_, _, loc) -> loc
-  | NPpat_map p -> loc_of_pattern p
-  | NPpat_cata (p, _) -> loc_of_pattern p
+  | NPpat_map p -> loc_of_pat p
+  | NPpat_cata (p, _) -> loc_of_pat p
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)
@@ -67,7 +67,7 @@ let rec processor_of_rhs ~name ~nonterm ~loc e0 =
        Location.raise_errorf ~loc
          "guards not allowed in nanopass clauses"
     | None ->
-       pattern_of_pattern p, e
+       pat_of_pattern p, e
   in
   let args, cases = get_args [] e0 in
   let clauses = List.map clause_of_case cases in
@@ -77,16 +77,16 @@ let rec processor_of_rhs ~name ~nonterm ~loc e0 =
    npc_args = args;
    npc_clauses = clauses}
 
-(** convert a [pattern] into a [np_pattern]. **)
-and pattern_of_pattern p =
+(** convert a [pattern] into a [np_pat]. **)
+and pat_of_pattern p =
   let base_pat =
     match p.ppat_desc with
     | Ppat_any -> NPpat_any p.ppat_loc
     | Ppat_var x -> NPpat_var x
     | Ppat_tuple ps ->
-       NPpat_tuple {txt = List.map pattern_of_pattern ps; loc = p.ppat_loc}
+       NPpat_tuple {txt = List.map pat_of_pattern ps; loc = p.ppat_loc}
     | Ppat_variant (v, arg) ->
-       NPpat_variant (v, Option.map pattern_of_pattern arg, p.ppat_loc)
+       NPpat_variant (v, Option.map pat_of_pattern arg, p.ppat_loc)
     | _ -> NPpat p
   in
   p.ppat_attributes

@@ -166,44 +166,44 @@ let tt =
         assert_equal ["AB"; "A0"] (List.map (fun pr -> pr.nppr_name) a_prods);
         end;
 
-      "pattern_of_pattern(1)" >::
+      "pat_of_pattern(1)" >::
         begin fun _ ->
         let p1 = [%pat? 3] in
         let p2 = [%pat? x] in
         let p3 = [%pat? (_, y)] in
-        assert_equal (NPpat p1) (pattern_of_pattern p1);
-        assert_equal (NPpat_var {txt = "x"; loc = p2.ppat_loc}) (pattern_of_pattern p2);
-        match pattern_of_pattern p3 with
+        assert_equal (NPpat p1) (pat_of_pattern p1);
+        assert_equal (NPpat_var {txt = "x"; loc = p2.ppat_loc}) (pat_of_pattern p2);
+        match pat_of_pattern p3 with
         | NPpat_tuple {txt = [NPpat_any _; NPpat_var {txt = "y"}]} -> ()
-        | _ -> assert_failure "np_pattern tuple does not match"
+        | _ -> assert_failure "np_pat tuple does not match"
         end;
 
-      "pattern_of_pattern(2)" >::
+      "pat_of_pattern(2)" >::
         begin fun _ ->
-        match pattern_of_pattern [%pat? x [@l]] with
+        match pat_of_pattern [%pat? x [@l]] with
         | NPpat_map (NPpat_var {txt = "x"}) -> ()
-        | _ -> assert_failure "np_pattern list does not match"
+        | _ -> assert_failure "np_pat list does not match"
         end;
 
-      "pattern_of_pattern(3)" >::
+      "pat_of_pattern(3)" >::
         begin fun _ ->
-        match pattern_of_pattern [%pat? (x,y) [@r] [@l]] with
+        match pat_of_pattern [%pat? (x,y) [@r] [@l]] with
         | NPpat_map (NPpat_cata (NPpat_tuple _, None)) -> ()
-        | _ -> assert_failure "np_pattern cata + list + tuple does not match"
+        | _ -> assert_failure "np_pat cata + list + tuple does not match"
         end;
 
-      "pattern_of_pattern(4)" >::
+      "pat_of_pattern(4)" >::
         begin fun _ ->
-        match pattern_of_pattern [%pat? (`X (_, _), `Y)] with
+        match pat_of_pattern [%pat? (`X (_, _), `Y)] with
         | NPpat_tuple {txt = [ NPpat_variant ("X", Some (NPpat_tuple _), _);
                                NPpat_variant ("Y", None, _) ]} -> ()
-        | _ -> assert_failure "np_pattern variant does not match"
+        | _ -> assert_failure "np_pat variant does not match"
         end;
 
       (* currently unimplemented *)
-      (* "pattern_of_pattern(4)" >::
+      (* "pat_of_pattern(4)" >::
         begin fun _ ->
-        match pattern_of_pattern [%pat? e' [@r expr]] with
+        match pat_of_pattern [%pat? e' [@r expr]] with
         | NPpat_cata (NPpat_var _, Some {pexp_desc = Pexp_ident {txt = Lident "expr"}}) -> ()
         | _ -> assert_failure "np_pattern explicit cata does not match"
         end; *)

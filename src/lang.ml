@@ -13,7 +13,7 @@ type np_type =
     just a variant, e.g. [`Var], [`App]. **)
 type np_production =
   { nppr_name : string
-  ; nppr_args : np_type list }
+  ; nppr_arg : np_type option }
 
 (** a nonterminal is a type defined by a nanopass language, e.g.
     [expr], [stmt]. **)
@@ -96,7 +96,9 @@ let production_of_row_field ~nt_names =
   function
   | Rtag (name, _, _, args) ->
      {nppr_name = name;
-      nppr_args = List.map (type_of_core_type ~nt_names) args}
+      nppr_arg = match args with
+                 | [t] -> Some (type_of_core_type ~nt_names t)
+                 | _ -> None}
 
   | Rinherit {ptyp_loc = loc} ->
      Location.raise_errorf ~loc

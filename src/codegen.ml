@@ -32,11 +32,11 @@ let gen_type_decl
           {npnt_loc = loc;
            npnt_name = nt_name;
            npnt_productions = prds} =
-  let row_of_prod {nppr_name = name; nppr_args = args} =
-    Rtag (name,
-          [],
-          List.is_empty args,
-          List.map (gen_core_type ~loc) args)
+  let row_of_prod {nppr_name = name; nppr_arg = arg} =
+    Rtag (name, [], Option.is_none arg,
+          match arg with
+          | Some npt -> [ gen_core_type ~loc npt ]
+          | None -> [])
   in
   let polyvar_desc = Ptyp_variant (List.map row_of_prod prds, Closed, None) in
   {ptype_name = {txt = nt_name; loc};

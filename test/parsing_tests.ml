@@ -78,14 +78,14 @@ let tt =
         begin fun _ ->
         match stri_type_decl
                 [%stri type expr =
-                   [ `Var of string * int
-                   | `Int of int ] ]
+                   [ `Two of string * int
+                   | `Zero ] ]
               |> nt_of_td
         with
         | {npnt_name = "expr";
            npnt_productions = [
-               {nppr_name = "Var"; nppr_args = [_; _]};
-               {nppr_name = "Int"} ]} -> ()
+               {nppr_name = "Two"; nppr_arg = Some _};
+               {nppr_name = "Zero"; nppr_arg = None} ]} -> ()
         | _ ->
            assert_failure "expr nonterm has the wrong structure"
         end;
@@ -115,8 +115,8 @@ let tt =
         in
         assert_equal "L0" lang.npl_name;
         assert_equal ["a"; "b"] (List.map (fun nt -> nt.npnt_name) lang.npl_nonterms);
-        assert_equal [ {nppr_name = "A"; nppr_args = [ NP_nonterm "b" ]};
-                       {nppr_name = "B"; nppr_args = [ NP_nonterm "a" ]} ]
+        assert_equal [ {nppr_name = "A"; nppr_arg = Some (NP_nonterm "b") };
+                       {nppr_name = "B"; nppr_arg = Some (NP_nonterm "a") } ]
           (lang.npl_nonterms
            |> List.map (fun nt -> nt.npnt_productions)
            |> List.concat);

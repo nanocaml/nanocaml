@@ -37,6 +37,25 @@ and typeck_pat ~pass typ pat =
   match pat with
   | NPpat_any _ | NPpat_var _ -> pat
 
+  | NPpat_alias (sub_pat, name) ->
+     NPpat_alias (typeck_pat ~pass typ sub_pat, name)
+
+  | NPpat_tuple {txt = sub_pats; loc} ->
+     begin match typ with
+     | NP_tuple sub_typs ->
+        if List.length sub_typs <> List.length sub_pats then
+          Location.raise_errorf ~loc
+            "wrong number of tuple arguments; expected %d, found %d"
+            (List.length sub_typs)
+            (List.length sub_pats)
+        else
+          NPpat_tuple {txt = List.map2 (typeck_pat ~pass)
+                               sub_typs
+                               sub_pats;
+                       loc}
+     | _ -> raise (typeck_err ~loc typ)
+     end
+
   | NPpat_variant (name, arg, loc) ->
      begin match typ with
      | NP_term _ -> pat
@@ -44,6 +63,12 @@ and typeck_pat ~pass typ pat =
         let arg' = typeck_nonterm ~pass ~loc nt_name name arg in
         NPpat_variant (name, arg', loc)
      | _ -> raise (typeck_err ~loc typ)
+     end
+
+  | NPpat p ->
+     begin match typ with
+     | NP_term _ -> pat
+     | _ -> raise (typeck_err ~loc:p.ppat_loc typ)
      end
 
   | _ -> raise (Failure "unimplemented pattern typechecking")

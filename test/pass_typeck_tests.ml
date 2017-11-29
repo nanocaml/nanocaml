@@ -75,6 +75,56 @@ let tt =
         assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_nonterm "a") pat);
         end;
 
+      "typeck_pat(3)" >::
+        begin fun _ ->
+        let pat = NPpat_alias (var_x, {txt = "y"; loc}) in
+        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_nonterm "a") pat);
+        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_term [%type: int]) pat);
+        end;
+
+      "typeck_pat(4)" >::
+        begin fun _ ->
+        let pat = NPpat_tuple {txt = [ any; any ]; loc} in
+        assert_equal pat (TC.typeck_pat ~pass:pass1
+                            (NP_tuple [ NP_term [%type: int];
+                                        NP_nonterm "a" ])
+                            pat);
+        end;
+
+      "typeck_pat(5)" >::
+        begin fun _ ->
+        try
+          TC.typeck_pat ~pass:pass1
+            (NP_tuple [ NP_term [%type: int];
+                        NP_nonterm "a" ])
+            (NPpat_tuple {txt = [ any; any; any ]; loc})
+          |> ignore;
+          assert_failure "expected bad arg-count tuple to fail"
+        with Location.Error e ->
+          assert_bool "shows arg counts"
+            (e.msg = "wrong number of tuple arguments; expected 2, found 3");
+        end;
+
+      "typeck_pat(6)" >::
+        begin fun _ ->
+        let pat = NPpat [%pat? 0] in
+        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_term [%type: int]) pat);
+        (* note: we don't typecheck against ocaml types; if it's a terminal, just
+           let ocaml do the typechecking *)
+        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_term [%type: string]) pat);
+        end;
+
+      "typeck_pat(7)" >::
+        begin fun _ ->
+        try
+          TC.typeck_pat ~pass:pass1
+            (NP_nonterm "a")
+            (NPpat [%pat? [1,2,3]])
+          |> ignore;
+          assert_failure "expected NPpat to fail on something other than NP_term type"
+        with Location.Error _ -> ()
+        end;
+
       "typeck_nonterm(1)" >::
         begin fun _ ->
         assert_equal None (TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" None);
@@ -88,7 +138,7 @@ let tt =
           |> ignore; assert_failure "expected typeck to fail (nonterm doesn't expect arguments)"
         with Location.Error e ->
           assert_bool "contains 'unexpected'"
-            (String.sub e.Location.msg 0 10 = "unexpected");
+            (String.sub e.msg 0 10 = "unexpected");
         end;
 
       "typeck_nonterm(3)" >::
@@ -98,7 +148,7 @@ let tt =
           |> ignore; assert_failure "expected typeck to fail (nonterm expects arguments)"
         with Location.Error e ->
           assert_bool "contains 'expected'"
-            (String.sub e.Location.msg 0 8 = "expected");
+            (String.sub e.msg 0 8 = "expected");
         end;
 
     ]

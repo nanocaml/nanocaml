@@ -28,7 +28,7 @@ let expr_function_cases e =
 let test_L0 =
   stri_mod_bind
     [%stri module Test_L0 = struct
-       type a = [ `A of b | `A0 of a ]
+       type a = [ `A of b | `A0 ]
        and b = [ `B of a ]
      end]
   |> Nanocaml.Lang.language_of_module

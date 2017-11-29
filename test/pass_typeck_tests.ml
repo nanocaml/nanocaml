@@ -12,6 +12,23 @@ let tt =
     let open Nanocaml.Lang in
     let module TC = Nanocaml.Pass_typeck in
     let loc = !default_loc in
+
+    let pass1 =
+      [%stri let[@pass Test_L0 => Test_L0] pass1 =
+         let rec a = function
+           | `A _ -> true
+           | `A0 -> false
+         and b = function
+           | `B x -> a x
+         in
+         a]
+      |> Parsing_tests.stri_value_binding
+      |> pass_of_value_binding
+    in
+
+    let any = NPpat_any loc in
+    let var_x = NPpat_var {txt = "x"; loc} in
+
     [
 
       "catamorphism(1)" >::
@@ -44,6 +61,12 @@ let tt =
           |> ignore;
           assert_failure "expected cata for 'a' to fail (not defined)"
         with Location.Error _ -> ()
+        end;
+
+      "typeck_pat(1)" >::
+        begin fun _ ->
+        assert_equal any (TC.typeck_pat ~pass:pass1 (NP_nonterm "a") any);
+        assert_equal var_x (TC.typeck_pat ~pass:pass1 (NP_nonterm "b") var_x);
         end;
 
     ]

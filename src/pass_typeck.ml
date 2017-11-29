@@ -25,6 +25,12 @@ let rec typeck_pass
   pass
 
 
+(** typecheck a single pattern, with the given expected type **)
+and typeck_pat ~pass typ pat =
+  match pat with
+  | NPpat_any _ | NPpat_var _ -> pat
+  | _ -> raise (Failure "unimplemented pattern typechecking")
+
 (** generate an appropriate catamorphism function expression for the
     given nonterminal. **)
 (* TODO: create a more sophisticated algorithm for choosing catamorphisms *)

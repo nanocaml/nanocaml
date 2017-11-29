@@ -192,6 +192,14 @@ let tt =
         | _ -> assert_failure "np_pattern cata + list + tuple does not match"
         end;
 
+      "pattern_of_pattern(4)" >::
+        begin fun _ ->
+        match pattern_of_pattern [%pat? (`X (_, _), `Y)] with
+        | NPpat_tuple {txt = [ NPpat_variant ("X", Some (NPpat_tuple _), _);
+                               NPpat_variant ("Y", None, _) ]} -> ()
+        | _ -> assert_failure "np_pattern variant does not match"
+        end;
+
       (* currently unimplemented *)
       (* "pattern_of_pattern(4)" >::
         begin fun _ ->

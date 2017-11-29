@@ -21,6 +21,7 @@ and np_pattern
   | NPpat_any of Location.t
   | NPpat_var of string loc
   | NPpat_tuple of np_pattern list loc
+  | NPpat_variant of string * np_pattern option * Location.t
   | NPpat_map of np_pattern (* list destructuring, e.g. pat [@l] *)
   | NPpat_cata of np_pattern * expression option (* [@r <optional explicit cata>] *)
 
@@ -41,6 +42,7 @@ let rec loc_of_pattern = function
   | NPpat_any loc -> loc
   | NPpat_var {loc} -> loc
   | NPpat_tuple {loc} -> loc
+  | NPpat_variant (_, _, loc) -> loc
   | NPpat_map p -> loc_of_pattern p
   | NPpat_cata (p, _) -> loc_of_pattern p
 
@@ -70,7 +72,10 @@ and pattern_of_pattern p =
     match p.ppat_desc with
     | Ppat_any -> NPpat_any p.ppat_loc
     | Ppat_var x -> NPpat_var x
-    | Ppat_tuple ps -> NPpat_tuple {txt = List.map pattern_of_pattern ps; loc = p.ppat_loc}
+    | Ppat_tuple ps ->
+       NPpat_tuple {txt = List.map pattern_of_pattern ps; loc = p.ppat_loc}
+    | Ppat_variant (v, arg) ->
+       NPpat_variant (v, Option.map pattern_of_pattern arg, p.ppat_loc)
     | _ -> NPpat p
   in
   p.ppat_attributes

@@ -174,7 +174,7 @@ let tt =
         assert_equal (NPpat p1) (pat_of_pattern p1);
         assert_equal (NPpat_var {txt = "x"; loc = p2.ppat_loc}) (pat_of_pattern p2);
         match pat_of_pattern p3 with
-        | NPpat_tuple {txt = [NPpat_any _; NPpat_var {txt = "y"}]} -> ()
+        | NPpat_tuple ([ NPpat_any _; NPpat_var {txt = "y"} ], _) -> ()
         | _ -> assert_failure "np_pat tuple does not match"
         end;
 
@@ -195,8 +195,9 @@ let tt =
       "pat_of_pattern(4)" >::
         begin fun _ ->
         match pat_of_pattern [%pat? (`X (_, _), (`Y as y))] with
-        | NPpat_tuple {txt = [ NPpat_variant ("X", Some (NPpat_tuple _), _);
-                               NPpat_alias (NPpat_variant ("Y", None, _), {txt = "y"}) ]}
+        | NPpat_tuple ([ NPpat_variant ("X", Some (NPpat_tuple _), _);
+                         NPpat_alias (NPpat_variant ("Y", None, _), {txt = "y"}) ],
+                       _)
           -> ()
         | _ -> assert_failure "np_pat variant does not match"
         end;

@@ -84,10 +84,9 @@ let tt =
 
       "typeck_pat(4)" >::
         begin fun _ ->
-        let pat = NPpat_tuple {txt = [ any; any ]; loc} in
+        let pat = NPpat_tuple ([ any; any ], loc) in
         assert_equal pat (TC.typeck_pat ~pass:pass1
-                            (NP_tuple [ NP_term [%type: int];
-                                        NP_nonterm "a" ])
+                            (NP_tuple [ NP_term [%type: int]; NP_nonterm "a" ])
                             pat);
         end;
 
@@ -97,7 +96,7 @@ let tt =
           TC.typeck_pat ~pass:pass1
             (NP_tuple [ NP_term [%type: int];
                         NP_nonterm "a" ])
-            (NPpat_tuple {txt = [ any; any; any ]; loc})
+            (NPpat_tuple ([ any; any; any ], loc))
           |> ignore;
           assert_failure "expected bad arg-count tuple to fail"
         with Location.Error e ->

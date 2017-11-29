@@ -40,7 +40,7 @@ and typeck_pat ~pass typ pat =
   | NPpat_alias (sub_pat, name) ->
      NPpat_alias (typeck_pat ~pass typ sub_pat, name)
 
-  | NPpat_tuple {txt = sub_pats; loc} ->
+  | NPpat_tuple (sub_pats, loc) ->
      begin match typ with
      | NP_tuple sub_typs ->
         if List.length sub_typs <> List.length sub_pats then
@@ -49,10 +49,12 @@ and typeck_pat ~pass typ pat =
             (List.length sub_typs)
             (List.length sub_pats)
         else
-          NPpat_tuple {txt = List.map2 (typeck_pat ~pass)
-                               sub_typs
-                               sub_pats;
-                       loc}
+          let sub_pats' =
+            List.map2 (typeck_pat ~pass)
+              sub_typs
+              sub_pats
+          in
+          NPpat_tuple (sub_pats', loc)
      | _ -> raise (typeck_err ~loc typ)
      end
 

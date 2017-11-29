@@ -33,7 +33,7 @@ and np_pat
   | NPpat_any of Location.t (* _ *)
   | NPpat_var of string loc (* x *)
   | NPpat_alias of np_pat * string loc (* p as x *)
-  | NPpat_tuple of np_pat list loc (* (p, ...) *)
+  | NPpat_tuple of np_pat list * Location.t (* (p, ...) *)
   | NPpat_variant of string * np_pat option * Location.t (* `X p *)
   | NPpat_map of np_pat (* list destructuring, e.g. (p [@l]) *)
   | NPpat_cata of np_pat * expression option (* p [@r <optional explicit cata>] *)
@@ -45,7 +45,7 @@ let rec loc_of_pat = function
   | NPpat_any loc -> loc
   | NPpat_var {loc} -> loc
   | NPpat_alias (_, {loc}) -> loc
-  | NPpat_tuple {loc} -> loc
+  | NPpat_tuple (_, loc) -> loc
   | NPpat_variant (_, _, loc) -> loc
   | NPpat_map p -> loc_of_pat p
   | NPpat_cata (p, _) -> loc_of_pat p
@@ -88,7 +88,7 @@ and pat_of_pattern p =
     | Ppat_alias (p, name) ->
        NPpat_alias (pat_of_pattern p, name)
     | Ppat_tuple ps ->
-       NPpat_tuple {txt = List.map pat_of_pattern ps; loc = p.ppat_loc}
+       NPpat_tuple (List.map pat_of_pattern ps, p.ppat_loc)
     | Ppat_variant (v, arg) ->
        NPpat_variant (v, Option.map pat_of_pattern arg, p.ppat_loc)
     | _ -> NPpat p

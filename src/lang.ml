@@ -54,10 +54,10 @@ let find_language ?(exn=Not_found) name =
     (Hashtbl.find_option languages name)
     exn
 
-(** [language_nonterm l ~name] returns the nonterminal
+(** [language_nonterm l name] returns the nonterminal
     in language [l] with the given name. raises [Not_found]
     if no such nonterminal. *)
-let language_nonterm ?(exn=Not_found) lang ~name =
+let language_nonterm ?(exn=Not_found) lang name =
   List.find_exn
     (fun nt -> nt.npnt_name = name)
     exn lang.npl_nonterms
@@ -130,7 +130,7 @@ let nonterm_of_type_decl ?extending ~nt_names = function
             (Location.errorf ~loc "must be extending a language to use this form"))
      in
      let old_nontem =
-       language_nonterm lang ~name
+       language_nonterm lang name
          ~exn:(Location.Error
                  (Location.errorf ~loc "no such nonterminal %S in language %S"
                     name lang.npl_name))

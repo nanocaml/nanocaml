@@ -24,7 +24,7 @@ let tt =
                in 0 ]
           |> pass_of_value_binding
         in
-        match TC.catamorphism ~loc pass test_L0_a with
+        match TC.catamorphism ~loc ~pass test_L0_a with
         | {pexp_desc = Pexp_ident {txt = Lident "a"}} -> ()
         | _ -> assert_failure "cata of 'a' has wrong form"
         end;
@@ -40,7 +40,7 @@ let tt =
           |> pass_of_value_binding;
         in
         try
-          TC.catamorphism ~loc pass test_L0_a
+          TC.catamorphism ~loc ~pass test_L0_a
           |> ignore;
           assert_failure "expected cata for 'a' to fail (not defined)"
         with Location.Error _ -> ()

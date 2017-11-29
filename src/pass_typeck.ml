@@ -28,7 +28,7 @@ let rec typeck_pass
 (** generate an appropriate catamorphism function expression for the
     given nonterminal. **)
 (* TODO: create a more sophisticated algorithm for choosing catamorphisms *)
-and catamorphism ~loc pass nonterm =
+and catamorphism ~loc ~pass nonterm =
   match List.filter (fun proc ->
             proc.npc_nonterm == nonterm
             && List.is_empty proc.npc_args)

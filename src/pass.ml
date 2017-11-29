@@ -195,7 +195,7 @@ let pass_of_value_binding = function
                  nonterm configurable using attributes? *)
               let nt_name = name in
               let nonterm =
-                Lang.language_nonterm l0 ~name:nt_name
+                Lang.language_nonterm l0 nt_name
                   ~exn:(Location.Error
                           (Location.errorf ~loc
                              "no such nonterminal %S in language %S" nt_name l0.Lang.npl_name))

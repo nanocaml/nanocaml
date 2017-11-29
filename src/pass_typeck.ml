@@ -36,6 +36,16 @@ and typeck_err ~loc typ =
 and typeck_pat ~pass typ pat =
   match pat with
   | NPpat_any _ | NPpat_var _ -> pat
+
+  | NPpat_variant (name, arg, loc) ->
+     begin match typ with
+     | NP_term _ -> pat
+     | NP_nonterm nt_name ->
+        let arg' = typeck_nonterm ~pass ~loc nt_name name arg in
+        NPpat_variant (name, arg', loc)
+     | _ -> raise (typeck_err ~loc typ)
+     end
+
   | _ -> raise (Failure "unimplemented pattern typechecking")
 
 (** typecheck the (optional) argument to a nontermal given [pr_name],

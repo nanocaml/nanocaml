@@ -69,6 +69,12 @@ let tt =
         assert_equal var_x (TC.typeck_pat ~pass:pass1 (NP_nonterm "b") var_x);
         end;
 
+      "typeck_pat(2)" >::
+        begin fun _ ->
+        let pat = NPpat_variant ("A", Some any, loc) in
+        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_nonterm "a") pat);
+        end;
+
       "typeck_nonterm(1)" >::
         begin fun _ ->
         assert_equal None (TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" None);

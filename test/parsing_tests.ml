@@ -210,23 +210,25 @@ let tt =
 
       "processor_of_rhs(1)" >::
         begin fun _ ->
-        let impl = [%expr function
-                       | `Var x -> `Var (find x)
-                       | `Let (x, e[@r], e') -> push x; expr e']
-        in
         match processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
-                [%expr
-                    fun x ~y -> [%e impl]
+                [%expr fun x ~y ->
+                    function
+                    | `Var x -> `Var (find x)
+                    | `Let (x, e[@r], e') -> push x; expr e'
                 ] with
         | {npc_name = "a";
            npc_nonterm = nt;
            npc_args = [ (Asttypes.Nolabel, _, {ppat_desc = Ppat_var {txt = "x"}});
                         (Asttypes.Labelled "y", _, {ppat_desc = Ppat_var {txt = "y"}}) ];
-           npc_clauses = cases}
+           npc_clauses = clauses}
           ->
            assert_equal test_L0_a nt;
-           assert_equal (expr_function_cases impl) cases;
-        | _ -> assert_failure "expr processor does not match"
+           begin match clauses with
+           | [ NPpat_variant ("Var", _, _), _;
+               NPpat_variant ("Let", _, _), _ ] -> ()
+           | _ -> assert_failure "clauses do not match"
+           end;
+        | _ -> assert_failure "processor does not match"
         end;
 
       "processor_of_rhs(2)" >::
@@ -235,7 +237,19 @@ let tt =
           [%expr fun x y -> 0]
           |> processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
           |> ignore;
-          assert_failure "expected processor to fail"
+          assert_failure "expected processor to fail (no 'function')"
+        with Location.Error _ -> ()
+        end;
+
+      "processor_of_rhs(3)" >::
+        begin fun _ ->
+        try
+          [%expr function
+              | `Foo when some_guard -> 0
+              | `Bar -> 1]
+          |> processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
+          |> ignore;
+          assert_failure "expected processor to fail (guard not allowed)"
         with Location.Error _ -> ()
         end;
 

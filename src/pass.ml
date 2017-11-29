@@ -11,7 +11,9 @@ type np_processor =
   ; npc_loc : Location.t
   ; npc_nonterm : Lang.np_nonterm
   ; npc_args : fun_arg list
-  ; npc_clauses : case list }
+  ; npc_clauses : clause list }
+
+and clause = np_pattern * expression
 
 (** represents a pattern in a production. the pattern must be parsed
     by nanocaml so that we can correctly map over lists and apply
@@ -59,12 +61,21 @@ let rec processor_of_rhs ~name ~nonterm ~loc e0 =
        Location.raise_errorf ~loc
          "processor must end in 'function' expression"
   in
+  let clause_of_case {pc_lhs = p; pc_rhs = e; pc_guard = g} =
+    match g with
+    | Some {pexp_loc = loc} ->
+       Location.raise_errorf ~loc
+         "guards not allowed in nanopass clauses"
+    | None ->
+       pattern_of_pattern p, e
+  in
   let args, cases = get_args [] e0 in
+  let clauses = List.map clause_of_case cases in
   {npc_name = name;
    npc_nonterm = nonterm;
    npc_loc = loc;
    npc_args = args;
-   npc_clauses = cases}
+   npc_clauses = clauses}
 
 (** convert a [pattern] into a [np_pattern]. **)
 and pattern_of_pattern p =

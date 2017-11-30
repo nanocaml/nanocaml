@@ -100,8 +100,8 @@ let tt =
           |> ignore;
           assert_failure "expected bad arg-count tuple to fail"
         with Location.Error e ->
-          assert_bool "shows arg counts"
-            (e.msg = "wrong number of tuple arguments; expected 2, found 3");
+          assert_equal "wrong number of tuple arguments; expected 2, found 3" e.msg
+            ~printer:(Printf.sprintf "%S")
         end;
 
       "typeck_pat(6)" >::
@@ -124,6 +124,40 @@ let tt =
         with Location.Error _ -> ()
         end;
 
+      "typeck_pat(8)" >::
+        begin fun _ ->
+        try
+          TC.typeck_pat ~pass:pass1 ~total:(ref true)
+            (NP_nonterm "a")
+            (NPpat_variant ("A0", None, loc))
+          |> ignore;
+          assert_failure "expected variant to fail when enforcing totality"
+        with Location.Error e ->
+          assert_equal "this pattern must" (String.sub e.msg 0 17)
+            ~printer:(Printf.sprintf "%S")
+        end;
+
+      "typeck_pat(9)" >::
+        begin fun _ ->
+        try
+          TC.typeck_pat ~pass:pass1 ~total:(ref true)
+            (NP_term [%type: int])
+            (NPpat [%pat? 0])
+          |> ignore;
+          assert_failure "expected int to fail when enforcing totality"
+        with Location.Error e ->
+          assert_equal "this pattern must" (String.sub e.msg 0 17)
+            ~printer:(Printf.sprintf "%S")
+        end;
+
+      (*
+      "typeck_pat(11)" >::
+        begin fun _ ->
+        let pat = NPpat_variant ("B", Some any, loc) in
+        assert_equal pat (TC.typeck_pat ~pass:pass1 ~total:(ref true) (NP_nonterm "b") pat);
+        end;
+       *)
+
       "typeck_nonterm(1)" >::
         begin fun _ ->
         assert_equal None (TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" None);
@@ -136,8 +170,8 @@ let tt =
           TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" (Some any)
           |> ignore; assert_failure "expected typeck to fail (nonterm doesn't expect arguments)"
         with Location.Error e ->
-          assert_bool "contains 'unexpected'"
-            (String.sub e.msg 0 10 = "unexpected");
+          assert_equal "unexpected" (String.sub e.msg 0 10)
+            ~printer:(Printf.sprintf "%S")
         end;
 
       "typeck_nonterm(3)" >::
@@ -146,8 +180,8 @@ let tt =
           TC.typeck_nonterm ~pass:pass1 ~loc "a" "A" None
           |> ignore; assert_failure "expected typeck to fail (nonterm expects arguments)"
         with Location.Error e ->
-          assert_bool "contains 'expected'"
-            (String.sub e.msg 0 8 = "expected");
+          assert_equal "expected" (String.sub e.msg 0 8)
+            ~printer:(Printf.sprintf "%S")
         end;
 
     ]

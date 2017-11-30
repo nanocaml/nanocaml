@@ -151,11 +151,17 @@ and typeck_cata ~pass ~loc opt_cata typ inner_pat =
   in
   match typ with
   | NP_nonterm nt_name ->
-     (* TODO: check [pat] is total, without typechecking *)
-     `Infer (opt_cata
-             |> Option.default_delayed (fun () ->
-                    catamorphism ~pass ~loc
-                      (language_nonterm pass.npp_input nt_name)))
+     if pat_is_conditional inner_pat then
+       Location.raise_errorf ~loc
+         "catamorphism binding must always succeed"
+     else
+       let cata =
+         Option.default_delayed (fun () ->
+             catamorphism ~pass ~loc
+               (language_nonterm pass.npp_input nt_name))
+           opt_cata
+       in
+       `Infer cata
 
   (* ignore [@r] on terminals *)
   | NP_term _ -> `Rewrite inner_pat
@@ -171,6 +177,19 @@ and typeck_cata ~pass ~loc opt_cata typ inner_pat =
      let pat_cata = NPpat_cata (NPpat_any loc, opt_cata) in
      let pat_tuple = NPpat_tuple (List.map (const pat_cata) elems, loc) in
      `Rewrite (wrap_pattern pat_tuple)
+
+
+(** determines if a pattern is conditional, e.g. it can fail for
+    certain values. **)
+and pat_is_conditional = function
+  | NPpat_any _ -> false
+  | NPpat_var _ -> false
+  | NPpat _ -> true
+  | NPpat_variant _ -> true
+  | NPpat_alias (pat, _) -> pat_is_conditional pat
+  | NPpat_map pat -> pat_is_conditional pat
+  | NPpat_cata (pat, _) -> pat_is_conditional pat
+  | NPpat_tuple (pats, _) -> List.exists pat_is_conditional pats
 
 
 (** generate an appropriate catamorphism function expression for the

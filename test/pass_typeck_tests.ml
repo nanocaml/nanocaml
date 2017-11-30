@@ -188,8 +188,8 @@ let tt =
         | _ -> assert_failure "elaborated (x [@r] : (a * int) list) has wrong form"
         end;
 
-      (*
-      "typeck_pat(11)" >::
+      (* UNIMPLEMENTED: allowing single-variant patterns to be treated as "total"
+      "typeck_pat(13)" >::
         begin fun _ ->
         let pat = NPpat_variant ("B", Some any, loc) in
         assert_equal pat (TC.typeck_pat ~pass:pass1 ~total:(ref true) (NP_nonterm "b") pat);
@@ -268,7 +268,6 @@ let tt =
         | _ -> assert_failure "rewritten list has wrong form"
         end;
 
-      (* UNIMPLEMENTED
       "typeck_cata(5)" >::
         begin fun _ ->
         try
@@ -279,6 +278,5 @@ let tt =
           assert_failure "expected non-total pattern in cata result to fail"
         with Location.Error _ -> ()
         end;
-       *)
 
     ]

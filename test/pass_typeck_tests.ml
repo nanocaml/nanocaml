@@ -160,6 +160,34 @@ let tt =
         assert_equal true !tot;
         end;
 
+      "typeck_pat(11)" >::
+        begin fun _ ->
+        match (TC.typeck_pat ~pass:pass1
+                 (NP_nonterm "a")
+                 (NPpat_cata (var_x, None))) with
+        (* x [@r] ==> x [@r a] *)
+        | NPpat_cata (NPpat_var {txt = "x"},
+                      Some {pexp_desc =
+                              Pexp_ident {txt = Lident "a"}})
+          -> ()
+        | _ -> assert_failure "elaborated (x [@r] : a) has wrong form"
+        end;
+
+      "typeck_pat(12)" >::
+        begin fun _ ->
+        match (TC.typeck_pat ~pass:pass1
+                 (NP_list (NP_tuple [ NP_nonterm "a";
+                                      NP_term [%type: int] ]))
+                 (NPpat_cata (var_x, None))) with
+        (* x [@r] ==> (_ [@r a], _) [@l] as x *)
+        | NPpat_alias (NPpat_map (NPpat_tuple
+                                    ([ NPpat_cata (NPpat_any _, Some _);
+                                       NPpat_any _ ],
+                                     _)),
+                       {txt = "x"}) -> ()
+        | _ -> assert_failure "elaborated (x [@r] : (a * int) list) has wrong form"
+        end;
+
       (*
       "typeck_pat(11)" >::
         begin fun _ ->

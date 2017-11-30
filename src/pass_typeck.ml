@@ -24,11 +24,11 @@ open Lang
     is matched, we have to place restrictions on patterns that contain these transfor-
     mations. once one is found, proceeding patterns must not be conditional. e.g. the
     following are rejected:
-    - [`Def ( ("x", _) @[l] )] (conditional pattern ["x"] within [[@l]])
-    - [`App (fn [@r], [])] (conditional pattern [[]] after [[@r]])
+    - `Def ( ("x", _) @[l] )    (conditional pattern "x" within [@l])
+    - `App (fn [@r], [])        (conditional pattern [] after [@r])
     the following are accepted:
-    - [`Int 0] (no [[@r]] or [[@l]])
-    - [`Let ( [], e [@r] )] (conditional pattern [[]] before [[@r]])
+    - `Int 0                    (no [@r] or [@l])
+    - `Let ( [], e [@r] )       (conditional pattern [] before [@r])
 
  **)
 let rec typeck_pass
@@ -104,7 +104,14 @@ and typeck_pat ~pass ?(total=ref false) typ pat =
      | _ -> raise (typeck_err ~loc:(loc_of_pat elem_pat) typ)
      end
 
-  | _ -> raise (Failure "unimplemented pattern typechecking")
+  | NPpat_cata (pat, opt_cata) ->
+     begin match typeck_cata ~pass ~loc:(loc_of_pat pat) opt_cata typ pat with
+     | `Infer cata ->
+        total := true;
+        NPpat_cata (pat, Some cata)
+     | `Rewrite pat' ->
+        typeck_pat ~pass ~total typ pat'
+     end
 
 (** typecheck the (optional) argument to a nontermal given [pr_name],
     the name of the production it is associated with. [nt_name] must

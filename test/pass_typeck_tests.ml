@@ -196,6 +196,21 @@ let tt =
         end;
        *)
 
+      "typeck_pat(14)" >::
+        begin fun _ ->
+        try
+          TC.typeck_pat ~pass:pass1
+            (NP_tuple [ NP_nonterm "a";
+                        NP_term [%type: int] ])
+            (NPpat_tuple ([ NPpat_cata (NPpat_any loc, None);
+                            NPpat [%pat? 0] ], loc))
+          |> ignore;
+          assert_failure "expected pattern to fail"
+        with Location.Error e ->
+          assert_equal "this pattern must always succeed, due to [@l] or [@r] patterns elsewhere"
+            e.msg ~printer:(Printf.sprintf "%S")
+        end;
+
       "typeck_nonterm(1)" >::
         begin fun _ ->
         assert_equal None (TC.typeck_nonterm ~pass:pass1 ~loc "a" "A0" None);

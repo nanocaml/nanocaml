@@ -150,6 +150,16 @@ let tt =
             ~printer:(Printf.sprintf "%S")
         end;
 
+      "typeck_pat(10)" >::
+        begin fun _ ->
+        let tot = ref false in
+        let pat = NPpat_map any in
+        assert_equal pat (TC.typeck_pat ~pass:pass1 ~total:tot
+                            (NP_list (NP_nonterm "a"))
+                            pat);
+        assert_equal true !tot;
+        end;
+
       (*
       "typeck_pat(11)" >::
         begin fun _ ->

@@ -97,6 +97,13 @@ and typeck_pat ~pass ?(total=ref false) typ pat =
      | _ -> raise (typeck_err ~loc:p.ppat_loc typ)
      end
 
+  | NPpat_map elem_pat ->
+     total := true;
+     begin match typ with
+     | NP_list elem_typ -> NPpat_map (typeck_pat ~pass ~total elem_typ elem_pat)
+     | _ -> raise (typeck_err ~loc:(loc_of_pat elem_pat) typ)
+     end
+
   | _ -> raise (Failure "unimplemented pattern typechecking")
 
 (** typecheck the (optional) argument to a nontermal given [pr_name],

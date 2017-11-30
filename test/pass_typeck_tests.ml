@@ -194,4 +194,63 @@ let tt =
             ~printer:(Printf.sprintf "%S")
         end;
 
+      "typeck_cata(1)" >::
+        begin fun _ ->
+        let cata = [%expr fn a b c] in
+        assert_equal (`Infer cata)
+          (TC.typeck_cata ~pass:pass1 ~loc (Some cata) (NP_nonterm "a") any);
+        assert_equal (`Infer (Exp.ident ~loc {txt = Lident "a"; loc}))
+          (TC.typeck_cata ~pass:pass1 ~loc None (NP_nonterm "a") any);
+        assert_equal (`Rewrite any)
+          (TC.typeck_cata ~pass:pass1 ~loc None (NP_term [%type: int]) any);
+        end;
+
+      "typeck_cata(2)" >::
+        begin fun _ ->
+        match TC.typeck_cata ~pass:pass1 ~loc None
+                (NP_tuple [ NP_term [%type: int]; NP_nonterm "a" ])
+                any
+        with
+        | `Rewrite (NPpat_tuple ([ NPpat_cata (_, None);
+                                   NPpat_cata (_, None) ], _)) -> ()
+        | _ -> assert_failure "rewritten tuple has wrong form"
+        end;
+
+      "typeck_cata(3)" >::
+        begin fun _ ->
+        match TC.typeck_cata ~pass:pass1 ~loc None
+                (NP_tuple [ NP_term [%type: int]; NP_nonterm "a" ])
+                var_x
+        with
+        | `Rewrite (NPpat_alias
+                      (NPpat_tuple ([ NPpat_cata (_, None);
+                                      NPpat_cata (_, None) ], _),
+                       {txt = "x"})) -> ()
+        | _ -> assert_failure "rewritten tuple (+ alias) has wrong form"
+        end;
+
+      "typeck_cata(4)" >::
+        begin fun _ ->
+        let cata = [%expr fn a b c] in
+        match TC.typeck_cata ~pass:pass1 ~loc (Some cata)
+                (NP_list (NP_nonterm "a"))
+                any
+        with
+        | `Rewrite (NPpat_map (NPpat_cata (NPpat_any _, Some _))) -> ()
+        | _ -> assert_failure "rewritten list has wrong form"
+        end;
+
+      (* UNIMPLEMENTED
+      "typeck_cata(5)" >::
+        begin fun _ ->
+        try
+          TC.typeck_cata ~pass:pass1 ~loc None
+            (NP_nonterm "a")
+            (NPpat [%pat? 3])
+          |> ignore;
+          assert_failure "expected non-total pattern in cata result to fail"
+        with Location.Error _ -> ()
+        end;
+       *)
+
     ]

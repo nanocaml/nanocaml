@@ -132,10 +132,44 @@ and typeck_nonterm ~pass ~loc nt_name pr_name arg =
   | Some typ, Some pat -> Some (typeck_pat ~pass typ pat)
 
 
+(** typechecks a catamorphism pattern, which either infers
+    the catamorphism, or rewrites the pattern by moving the
+    catamorphism to deeper sub-patterns. **)
+and typeck_cata ~pass ~loc opt_cata typ inner_pat =
+  (* wraps given pattern with 'as x' if [inner_pat] is a variable *)
+  let wrap_pattern pat = match inner_pat with
+    | NPpat_any _ -> pat
+    | NPpat_var var -> NPpat_alias (pat, var)
+    | _ -> raise (typeck_err ~loc typ)
+  in
+  match typ with
+  | NP_nonterm nt_name ->
+     (* TODO: check [pat] is total, without typechecking *)
+     `Infer (opt_cata
+             |> Option.default_delayed (fun () ->
+                    catamorphism ~pass ~loc
+                      (language_nonterm pass.npp_input nt_name)))
+
+  (* ignore [@r] on terminals *)
+  | NP_term _ -> `Rewrite inner_pat
+
+  (* if [xs] has list type, then [xs [@r]] = [_ [@r] [@l] as xs] *)
+  | NP_list _ ->
+     let pat_cata = NPpat_cata (NPpat_any loc, opt_cata) in
+     let pat_map = NPpat_map pat_cata in
+     `Rewrite (wrap_pattern pat_map)
+
+  (* if [y] has tuple type, then [y [@r]] = [(_ [@r], ...) as y] *)
+  | NP_tuple elems ->
+     let pat_cata = NPpat_cata (NPpat_any loc, opt_cata) in
+     let pat_tuple = NPpat_tuple (List.map (const pat_cata) elems, loc) in
+     `Rewrite (wrap_pattern pat_tuple)
+
+
 (** generate an appropriate catamorphism function expression for the
     given nonterminal. **)
 (* TODO: create a more sophisticated algorithm for choosing catamorphisms *)
-and catamorphism ~loc ~pass nonterm =
+and catamorphism ~pass ~loc nonterm =
   match List.filter (fun proc ->
             proc.npc_nonterm == nonterm
             && List.is_empty proc.npc_args)

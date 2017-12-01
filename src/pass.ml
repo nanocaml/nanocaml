@@ -141,7 +141,7 @@ let pass_of_value_binding = function
      pvb_expr = e0;
      pvb_attributes = pass_attr::_} ->
 
-     (* parse language from [[@pass L0 --> L1]] *)
+     (* parse language from [[@pass L0 => L1]] *)
      let find_lang l loc =
        Lang.find_language l
          ~exn:(Location.Error
@@ -164,12 +164,33 @@ let pass_of_value_binding = function
         its argument in place of the processors/body. *)
      let rec extract_definitions f =
        function
+       | {pexp_desc = Pexp_extension ({txt = "passes"}, PStr stmts); pexp_loc = passes_loc} ->
+          let entry = ref None in
+          let extract_stmt_bindings = begin function
+            | {pstr_desc = Pstr_value (Recursive, vbs)} ->
+              let set_entry_name = begin function
+                | Ppat_var {txt = name} -> entry := Some name
+                | _ -> ()
+              end in
+              List.iter (fun vb -> if List.exists (fun ({Asttypes.txt}, _) -> txt = "entry") vb.pvb_attributes then set_entry_name vb.pvb_pat.ppat_desc) vbs;
+              vbs
+            | _ -> []
+          end in
+          let vbs = List.fold_right (fun bindings lst -> extract_stmt_bindings bindings @ lst) stmts []
+          and body = match !entry with
+            | None -> failwith "[%passes ...] requires a designated [@entry] function"
+            | Some id -> {pexp_desc = Pexp_ident {txt = Lident id; loc = passes_loc};
+                          pexp_loc = passes_loc;
+                          pexp_attributes = []} in
+          f, vbs, body
+
        | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} as e ->
           extract_definitions
             (fun e' -> f {e with pexp_desc = Pexp_fun (lbl, dflt, pat, e')})
             body
 
-       | {pexp_desc = Pexp_let (recf, vbs, ({pexp_desc = Pexp_let _} as body))} as e ->
+       | {pexp_desc = Pexp_let (recf, vbs, ({pexp_desc = Pexp_let _} as body))} as e
+       | ({pexp_desc = Pexp_let (recf, vbs, ({pexp_desc = Pexp_extension _} as body))} as e) ->
           extract_definitions
             (fun e' -> f {e with pexp_desc = Pexp_let (recf, vbs, e')})
             body

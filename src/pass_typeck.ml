@@ -197,7 +197,7 @@ and pat_is_conditional = function
 (* TODO: create a more sophisticated algorithm for choosing catamorphisms *)
 and catamorphism ~pass ~loc nonterm =
   match List.filter (fun proc ->
-            proc.npc_nonterm == nonterm
+            proc.npc_dom == nonterm
             && List.is_empty proc.npc_args)
           pass.npp_procs
   with

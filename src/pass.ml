@@ -8,20 +8,23 @@ type fun_arg = Asttypes.arg_label * expression option * pattern
 type np_pass =
   { npp_name : string
   ; npp_loc : Location.t
-  ; npp_input : Lang.np_language
-  ; npp_output : Lang.np_language
-  ; npp_pre : expression -> expression
-  ; npp_post : expression
-  ; npp_procs : np_processor list }
+  ; npp_input : Lang.np_language (* source language *)
+  ; npp_output : Lang.np_language (* target language *)
+  ; npp_pre : expression -> expression (* generates expressions to precede productions / entry *)
+  ; npp_post : expression (* entry point expression *)
+  ; npp_procs : np_processor list (* proccessors *)
+  }
 
 (** represents a processor definition (a transformation
     between nonterminals in a nanopass) **)
 and np_processor =
   { npc_name : string
   ; npc_loc : Location.t
-  ; npc_nonterm : Lang.np_nonterm
-  ; npc_args : fun_arg list
-  ; npc_clauses : clause list }
+  ; npc_dom : Lang.np_nonterm (* domain nonterminal *)
+  ; npc_cod : Lang.np_nonterm option (* co-domain nonterminal (or terminal, when [None]) *)
+  ; npc_args : fun_arg list (* arguments to processor *)
+  ; npc_clauses : clause list (* processor clauses *)
+  }
 
 and clause = np_pat * expression
 
@@ -52,7 +55,7 @@ let rec loc_of_pat = function
 
 
 (** convert the RHS of a [let] into a [np_processor]. **)
-let rec processor_of_rhs ~name ~nonterm ~loc e0 =
+let rec processor_of_rhs ~name ~dom ~cod ~loc e0 =
   let rec get_args acc = function
     | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} ->
        let arg = lbl, dflt, pat in
@@ -74,7 +77,8 @@ let rec processor_of_rhs ~name ~nonterm ~loc e0 =
   let args, cases = get_args [] e0 in
   let clauses = List.map clause_of_case cases in
   {npc_name = name;
-   npc_nonterm = nonterm;
+   npc_dom = dom;
+   npc_cod = cod;
    npc_loc = loc;
    npc_args = args;
    npc_clauses = clauses}
@@ -133,6 +137,39 @@ let extract_pass_sig = function
        "invalid language specification; expected 'LX %s LY'"
        signature_arrow
 
+(** extract domain and co-domain from the name of a production.
+    the rules are:
+      y_of_x  =>   dom="x", cod="y"
+      x_to_y  =>   dom="x", cod="y"
+      x       =>   dom=cod="x"
+      x_f     =>   dom="x", cof=None
+
+    if the co-domain is not a valid nonterm of the output language,
+    then the co-domain is None.
+
+    given the string name, returns [dom, opt_cod].
+ **)
+let extract_dom_cod ~loc l0 l1 name =
+  let get_nt lang name =
+    try
+      Lang.language_nonterm lang name
+    with Not_found ->
+      Location.raise_errorf ~loc
+         "no such nonterminal %S in language %S" name lang.Lang.npl_name
+  in
+  let get_nt_opt lang name =
+    try
+      Some (Lang.language_nonterm lang name)
+    with Not_found -> None
+  in
+  (* TODO: not split on '_'!!!!! instead just search for "of"/"to" *)
+  match String.split_on_char '_' name with
+  | [ cod; "of"; dom ] -> get_nt l0 dom, get_nt_opt l1 cod
+  | [ dom; "to"; cod ] -> get_nt l0 dom, get_nt_opt l1 cod
+  | [ both ] -> get_nt l0 both, get_nt_opt l1 both
+  | dom::_ -> get_nt l0 dom, None
+  | _ -> Location.raise_errorf ~loc
+           "unable to infer processor input/output from processor's name"
 
 (** convert a [value_binding] into a [np_pass] *)
 let pass_of_value_binding = function
@@ -141,18 +178,19 @@ let pass_of_value_binding = function
      pvb_expr = e0;
      pvb_attributes = pass_attr::_} ->
 
-     (* parse language from [[@pass L0 => L1]] *)
-     let find_lang l loc =
+     (* parse language from [[@pass L0 --> L1]] *)
+     let find_lang ~loc l =
        Lang.find_language l
          ~exn:(Location.Error
-                 (Location.errorf ~loc "language %S has not been defined" l))
+                 (Location.errorf ~loc
+                    "language %S has not been defined" l))
      in
      let l0, l1 =
        match snd pass_attr with
        | PStr [ {pstr_desc = Pstr_eval (lang_expr, [])} ] ->
           let (l0_name, l0_loc), (l1_name, l1_loc) = extract_pass_sig lang_expr in
-          find_lang l0_name l0_loc,
-          find_lang l1_name l1_loc
+          find_lang l0_loc l0_name,
+          find_lang l1_loc l1_name
        | _ ->
           Location.raise_errorf ~loc:(fst pass_attr).loc
             "invalid [@pass] syntax"
@@ -212,16 +250,9 @@ let pass_of_value_binding = function
               pvb_loc = loc;
               pvb_attributes = ats}
              ->
-              (* TODO: naming scheme for processors;
-                 nonterm configurable using attributes? *)
-              let nt_name = name in
-              let nonterm =
-                Lang.language_nonterm l0 nt_name
-                  ~exn:(Location.Error
-                          (Location.errorf ~loc
-                             "no such nonterminal %S in language %S" nt_name l0.Lang.npl_name))
-              in
-              processor_of_rhs ~name ~nonterm ~loc proc_rhs
+              (* parse dom/cod names *)
+              let (dom, cod) = extract_dom_cod ~loc l0 l1 name in
+              processor_of_rhs ~name ~loc ~dom ~cod proc_rhs
 
            | {pvb_loc = loc} ->
               Location.raise_errorf ~loc

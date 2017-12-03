@@ -34,6 +34,7 @@ let test_L0 =
   |> Nanocaml.Lang.language_of_module
 
 let test_L0_a = Nanocaml.Lang.language_nonterm test_L0 "a"
+let test_L0_b = Nanocaml.Lang.language_nonterm test_L0 "b"
 
 let () =
   Hashtbl.add Nanocaml.Lang.languages "Test_L0" test_L0
@@ -219,19 +220,19 @@ let tt =
 
       "processor_of_rhs(1)" >::
         begin fun _ ->
-        match processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
+        match processor_of_rhs ~name:"a" ~dom:test_L0_a ~cod:None ~loc
                 [%expr fun x ~y ->
                     function
                     | `Var x -> `Var (find x)
                     | `Let (x, e[@r], e') -> push x; expr e'
                 ] with
         | {npc_name = "a";
-           npc_nonterm = nt;
+           npc_dom = dom;
            npc_args = [ (Asttypes.Nolabel, _, {ppat_desc = Ppat_var {txt = "x"}});
                         (Asttypes.Labelled "y", _, {ppat_desc = Ppat_var {txt = "y"}}) ];
            npc_clauses = clauses}
           ->
-           assert_equal test_L0_a nt;
+           assert_equal test_L0_a dom;
            begin match clauses with
            | [ NPpat_variant ("Var", _, _), _;
                NPpat_variant ("Let", _, _), _ ] -> ()
@@ -244,7 +245,7 @@ let tt =
         begin fun _ ->
         try
           [%expr fun x y -> 0]
-          |> processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
+          |> processor_of_rhs ~name:"a" ~dom:test_L0_a ~cod:None ~loc
           |> ignore;
           assert_failure "expected processor to fail (no 'function')"
         with Location.Error _ -> ()
@@ -256,7 +257,7 @@ let tt =
           [%expr function
               | `Foo when some_guard -> 0
               | `Bar -> 1]
-          |> processor_of_rhs ~name:"a" ~nonterm:test_L0_a ~loc
+          |> processor_of_rhs ~name:"a" ~dom:test_L0_a ~cod:None ~loc
           |> ignore;
           assert_failure "expected processor to fail (guard not allowed)"
         with Location.Error _ -> ()
@@ -296,6 +297,34 @@ let tt =
         with Location.Error _ -> ()
         end;
 
+      "extract_dom_cod(1)" >::
+        begin fun _ ->
+        let extr = extract_dom_cod ~loc test_L0 test_L0 in
+        assert_equal (test_L0_a, None) (extr "a_thing");
+        assert_equal (test_L0_a, None) (extr "a_to_thing");
+        assert_equal (test_L0_a, None) (extr "thing_of_a");
+        assert_equal (test_L0_a, Some (test_L0_b)) (extr "b_of_a");
+        assert_equal (test_L0_a, Some (test_L0_b)) (extr "a_to_b");
+        assert_equal (test_L0_a, Some (test_L0_a)) (extr "a");
+        assert_equal (test_L0_b, Some (test_L0_b)) (extr "b");
+        end;
+
+      "extract_dom_cod(2)" >::
+        begin fun _ ->
+        try
+          extract_dom_cod ~loc test_L0 test_L0 "c" |> ignore;
+          assert_failure "expected to fail";
+        with Location.Error _ -> ()
+        end;
+
+      "extract_dom_cod(3)" >::
+        begin fun _ ->
+        try
+          extract_dom_cod ~loc test_L0 test_L0 "_" |> ignore;
+          assert_failure "expected to fail";
+        with Location.Error _ -> ()
+        end;
+
       "pass_of_value_binding(1)" >::
         begin fun _ ->
         match stri_value_binding
@@ -320,7 +349,8 @@ let tt =
            assert_equal "Test_L0" li.npl_name;
            assert_equal "Test_L0" lo.npl_name;
            assert_equal "a" a_proc.npc_name;
-           assert_equal test_L0_a a_proc.npc_nonterm;
+           assert_equal test_L0_a a_proc.npc_dom;
+           assert_equal (Some test_L0_a) a_proc.npc_cod;
            assert_equal 1 (List.length a_proc.npc_clauses);
 
            let body = [%expr 1 + 2 + 3] in

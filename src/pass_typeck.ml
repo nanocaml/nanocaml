@@ -11,7 +11,7 @@ open Lang
       2) elaborates catamorphisms that aren't applied directly to a nonterminal
 
     for instance, given the nonterm
-      type stmt = [ `Def of (string, expr) list ]
+      type stmt = [ `Def of (string, expr) list | ... ]
     it expands the pattern
       `Def (defs [@r])
     into
@@ -20,16 +20,23 @@ open Lang
     this way, NPpat_cata is only applied directly to nonterminals (in this case,
     'expr'), which simplifies the generation of code.
 
-    because catamorphims (and list maps) expand into [let] bindings AFTER a pattern
-    is matched, we have to place restrictions on patterns that contain these transfor-
-    mations. once one is found, proceeding patterns must not be conditional. e.g. the
-    following are rejected:
-    - `Def ( ("x", _) @[l] )    (conditional pattern "x" within [@l])
-    - `App (fn [@r], [])        (conditional pattern [] after [@r])
-    the following are accepted:
-    - `Int 0                    (no [@r] or [@l])
-    - `Let ( [], e [@r] )       (conditional pattern [] before [@r])
+    non-total patterns (pattern which may fail) are not allowed within [@l] or [@r]
+    forms. This is because they expand to let definitions that match the inner pattern.
+    e.g.
+      `Def ([])             ok
+      `Var ((x,i) [@r])     ok
 
+      `Def ([] [@r])        bad
+         would expand into roughly
+           `Def (defs_) ->
+             let [] = List.map (fun (x,e) -> ...) defs_ in
+                 ^ if this pattern fails, we are fucked
+
+      `Expr (e' [@r], [])   ok   NOTE: if the [] match fails, the cata for e'
+                                 will not be called!
+         expands into
+           `Expr (e_, []) ->
+             let e' = expr_of_expr e_ in
  **)
 let rec typeck_pass
           ({npp_input = lang;
@@ -48,17 +55,12 @@ and typeck_err ~loc typ =
     [~total] is a [bool ref] that should be [false] (default) when the pattern is
     allowed to be conditional, but can be changed to [true] when list maps / catas are
     encountered. **)
-and typeck_pat ~pass ?(total=ref false) typ pat =
-  let conditional_pattern () =
-    if !total then
-      Location.raise_errorf ~loc:(loc_of_pat pat)
-        "this pattern must always succeed, due to [@l] or [@r] patterns elsewhere"
-  in
+and typeck_pat ~pass typ pat =
   match pat with
   | NPpat_any _ | NPpat_var _ -> pat
 
   | NPpat_alias (sub_pat, name) ->
-     NPpat_alias (typeck_pat ~total ~pass typ sub_pat, name)
+     NPpat_alias (typeck_pat ~pass typ sub_pat, name)
 
   | NPpat_tuple (sub_pats, loc) ->
      begin match typ with
@@ -70,7 +72,7 @@ and typeck_pat ~pass ?(total=ref false) typ pat =
             (List.length sub_pats)
         else
           let sub_pats' =
-            List.map2 (typeck_pat ~total ~pass)
+            List.map2 (typeck_pat ~pass)
               sub_typs
               sub_pats
           in
@@ -79,7 +81,6 @@ and typeck_pat ~pass ?(total=ref false) typ pat =
      end
 
   | NPpat_variant (name, arg, loc) ->
-     conditional_pattern ();
      (* TODO: single-variant-types should be allowed
         to be recursively destructured (?) *)
      begin match typ with
@@ -91,26 +92,23 @@ and typeck_pat ~pass ?(total=ref false) typ pat =
      end
 
   | NPpat p ->
-     conditional_pattern ();
      begin match typ with
      | NP_term _ -> pat
      | _ -> raise (typeck_err ~loc:p.ppat_loc typ)
      end
 
   | NPpat_map elem_pat ->
-     total := true;
      begin match typ with
-     | NP_list elem_typ -> NPpat_map (typeck_pat ~pass ~total elem_typ elem_pat)
+     | NP_list elem_typ -> NPpat_map (typeck_pat ~pass elem_typ elem_pat)
      | _ -> raise (typeck_err ~loc:(loc_of_pat elem_pat) typ)
      end
 
   | NPpat_cata (pat, opt_cata) ->
      begin match typeck_cata ~pass ~loc:(loc_of_pat pat) opt_cata typ pat with
      | `Infer cata ->
-        total := true;
         NPpat_cata (pat, Some cata)
      | `Rewrite pat' ->
-        typeck_pat ~pass ~total typ pat'
+        typeck_pat ~pass typ pat'
      end
 
 (** typecheck the (optional) argument to a nontermal given [pr_name],

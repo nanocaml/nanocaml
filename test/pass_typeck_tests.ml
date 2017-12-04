@@ -126,42 +126,6 @@ let tt =
 
       "typeck_pat(8)" >::
         begin fun _ ->
-        try
-          TC.typeck_pat ~pass:pass1 ~total:(ref true)
-            (NP_nonterm "a")
-            (NPpat_variant ("A0", None, loc))
-          |> ignore;
-          assert_failure "expected variant to fail when enforcing totality"
-        with Location.Error e ->
-          assert_equal "this pattern must" (String.sub e.msg 0 17)
-            ~printer:(Printf.sprintf "%S")
-        end;
-
-      "typeck_pat(9)" >::
-        begin fun _ ->
-        try
-          TC.typeck_pat ~pass:pass1 ~total:(ref true)
-            (NP_term [%type: int])
-            (NPpat [%pat? 0])
-          |> ignore;
-          assert_failure "expected int to fail when enforcing totality"
-        with Location.Error e ->
-          assert_equal "this pattern must" (String.sub e.msg 0 17)
-            ~printer:(Printf.sprintf "%S")
-        end;
-
-      "typeck_pat(10)" >::
-        begin fun _ ->
-        let tot = ref false in
-        let pat = NPpat_map any in
-        assert_equal pat (TC.typeck_pat ~pass:pass1 ~total:tot
-                            (NP_list (NP_nonterm "a"))
-                            pat);
-        assert_equal true !tot;
-        end;
-
-      "typeck_pat(11)" >::
-        begin fun _ ->
         match (TC.typeck_pat ~pass:pass1
                  (NP_nonterm "a")
                  (NPpat_cata (var_x, None))) with
@@ -173,7 +137,7 @@ let tt =
         | _ -> assert_failure "elaborated (x [@r] : a) has wrong form"
         end;
 
-      "typeck_pat(12)" >::
+      "typeck_pat(9)" >::
         begin fun _ ->
         match (TC.typeck_pat ~pass:pass1
                  (NP_list (NP_tuple [ NP_nonterm "a";
@@ -186,29 +150,6 @@ let tt =
                                      _)),
                        {txt = "x"}) -> ()
         | _ -> assert_failure "elaborated (x [@r] : (a * int) list) has wrong form"
-        end;
-
-      (* UNIMPLEMENTED: allowing single-variant patterns to be treated as "total"
-      "typeck_pat(13)" >::
-        begin fun _ ->
-        let pat = NPpat_variant ("B", Some any, loc) in
-        assert_equal pat (TC.typeck_pat ~pass:pass1 ~total:(ref true) (NP_nonterm "b") pat);
-        end;
-       *)
-
-      "typeck_pat(14)" >::
-        begin fun _ ->
-        try
-          TC.typeck_pat ~pass:pass1
-            (NP_tuple [ NP_nonterm "a";
-                        NP_term [%type: int] ])
-            (NPpat_tuple ([ NPpat_cata (NPpat_any loc, None);
-                            NPpat [%pat? 0] ], loc))
-          |> ignore;
-          assert_failure "expected pattern to fail"
-        with Location.Error e ->
-          assert_equal "this pattern must always succeed, due to [@l] or [@r] patterns elsewhere"
-            e.msg ~printer:(Printf.sprintf "%S")
         end;
 
       "typeck_nonterm(1)" >::

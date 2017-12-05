@@ -106,26 +106,6 @@ let tt =
 
       "typeck_pat(6)" >::
         begin fun _ ->
-        let pat = NPpat [%pat? 0] in
-        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_term [%type: int]) pat);
-        (* note: we don't typecheck against ocaml types; if it's a terminal, just
-           let ocaml do the typechecking *)
-        assert_equal pat (TC.typeck_pat ~pass:pass1 (NP_term [%type: string]) pat);
-        end;
-
-      "typeck_pat(7)" >::
-        begin fun _ ->
-        try
-          TC.typeck_pat ~pass:pass1
-            (NP_nonterm "a")
-            (NPpat [%pat? [1,2,3]])
-          |> ignore;
-          assert_failure "expected NPpat to fail on something other than NP_term type"
-        with Location.Error _ -> ()
-        end;
-
-      "typeck_pat(8)" >::
-        begin fun _ ->
         match (TC.typeck_pat ~pass:pass1
                  (NP_nonterm "a")
                  (NPpat_cata (var_x, None))) with
@@ -137,7 +117,7 @@ let tt =
         | _ -> assert_failure "elaborated (x [@r] : a) has wrong form"
         end;
 
-      "typeck_pat(9)" >::
+      "typeck_pat(7)" >::
         begin fun _ ->
         match (TC.typeck_pat ~pass:pass1
                  (NP_list (NP_tuple [ NP_nonterm "a";
@@ -229,7 +209,7 @@ let tt =
         try
           TC.typeck_cata ~pass:pass1 ~loc None
             (NP_nonterm "a")
-            (NPpat [%pat? 3])
+            (NPpat_variant ("A", None, loc))
           |> ignore;
           assert_failure "expected non-total pattern in cata result to fail"
         with Location.Error _ -> ()

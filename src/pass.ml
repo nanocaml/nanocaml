@@ -32,7 +32,7 @@ and clause = np_pat * expression
     by nanocaml so that we can correctly map over lists and apply
     catamorphims, e.g. for expressions like [(x, e [@r]) [@l]]. **)
 and np_pat
-  = NPpat of pattern (* <other patterns, like constants or :: > *)
+  = (* TODO: [] and :: patterns *)
   | NPpat_any of Location.t (* _ *)
   | NPpat_var of string loc (* x *)
   | NPpat_alias of np_pat * string loc (* p as x *)
@@ -44,7 +44,6 @@ and np_pat
 
 (** returns the [Location.t] of the given pattern. **)
 let rec loc_of_pat = function
-  | NPpat {ppat_loc} -> ppat_loc
   | NPpat_any loc -> loc
   | NPpat_var {loc} -> loc
   | NPpat_alias (_, {loc}) -> loc
@@ -95,7 +94,9 @@ and pat_of_pattern p =
        NPpat_tuple (List.map pat_of_pattern ps, p.ppat_loc)
     | Ppat_variant (v, arg) ->
        NPpat_variant (v, Option.map pat_of_pattern arg, p.ppat_loc)
-    | _ -> NPpat p
+    | _ ->
+       Location.raise_errorf ~loc:p.ppat_loc
+         "this kind of pattern not allowed in nanopass clause"
   in
   p.ppat_attributes
   |> List.fold_left

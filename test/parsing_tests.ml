@@ -169,12 +169,10 @@ let tt =
 
       "pat_of_pattern(1)" >::
         begin fun _ ->
-        let p1 = [%pat? 3] in
-        let p2 = [%pat? x] in
-        let p3 = [%pat? (_, y)] in
-        assert_equal (NPpat p1) (pat_of_pattern p1);
-        assert_equal (NPpat_var {txt = "x"; loc = p2.ppat_loc}) (pat_of_pattern p2);
-        match pat_of_pattern p3 with
+        let p1 = [%pat? x] in
+        let p2 = [%pat? (_, y)] in
+        assert_equal (NPpat_var {txt = "x"; loc = p1.ppat_loc}) (pat_of_pattern p1);
+        match pat_of_pattern p2 with
         | NPpat_tuple ([ NPpat_any _; NPpat_var {txt = "y"} ], _) -> ()
         | _ -> assert_failure "np_pat tuple does not match"
         end;

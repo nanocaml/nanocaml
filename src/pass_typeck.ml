@@ -20,8 +20,8 @@ open Lang
     this way, NPpat_cata is only applied directly to nonterminals (in this case,
     'expr'), which simplifies the generation of code.
 
-    non-total patterns (pattern which may fail) are not allowed within [@l] or [@r]
-    forms. This is because they expand to let definitions that match the inner pattern.
+    non-exhaustive patterns are not allowed within [@l] or [@r] forms. This is
+    because they expand to let definitions that match the inner pattern.
     e.g.
       `Def ([])             ok
       `Var ((x,i) [@r])     ok
@@ -81,20 +81,12 @@ and typeck_pat ~pass typ pat =
      end
 
   | NPpat_variant (name, arg, loc) ->
-     (* TODO: single-variant-types should be allowed
-        to be recursively destructured (?) *)
      begin match typ with
      | NP_term _ -> pat
      | NP_nonterm nt_name ->
         let arg' = typeck_nonterm ~pass ~loc nt_name name arg in
         NPpat_variant (name, arg', loc)
      | _ -> raise (typeck_err ~loc typ)
-     end
-
-  | NPpat p ->
-     begin match typ with
-     | NP_term _ -> pat
-     | _ -> raise (typeck_err ~loc:p.ppat_loc typ)
      end
 
   | NPpat_map elem_pat ->
@@ -182,7 +174,6 @@ and typeck_cata ~pass ~loc opt_cata typ inner_pat =
 and pat_is_conditional = function
   | NPpat_any _ -> false
   | NPpat_var _ -> false
-  | NPpat _ -> true
   | NPpat_variant _ -> true
   | NPpat_alias (pat, _) -> pat_is_conditional pat
   | NPpat_map pat -> pat_is_conditional pat

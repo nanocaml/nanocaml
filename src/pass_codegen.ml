@@ -100,7 +100,7 @@ let rec gen_pattern ~next_id ~bind_as pat =
           |> Enum.collect2
        | Some id ->
           (* BEFORE: (p,q) as x -> e
-             AFTER: (p as y1, q as y2) -> let x = y1,y2 in e *)
+             AFTER: (p as t0, q as t1) -> let x = t0, t1 in e *)
           let ps, fs, binds =
             List.enum pats
             |> Enum.map (fun pat ->

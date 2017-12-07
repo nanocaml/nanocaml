@@ -11,7 +11,12 @@ let tt =
   let id_x = Location.mkloc "x" loc in
   let id_y = Location.mkloc "y" loc in
   let id_z = Location.mkloc "z" loc in
+  let id_tmp0 = fresh (ref 0) loc in
+  let id_tmp1 = fresh (ref 1) loc in
+  (* let id_tmp2 = fresh (ref 2) loc in
+     let id_tmp3 = fresh (ref 2) loc in *)
   let var_x = NPpat_var id_x in
+  let any = NPpat_any loc in
   let tmp_exp1 = [%expr 1 + 3 * 4] in
   let tmp_exp2 = [%expr 8 * f 9] in
   let gen_pat ?(v=None) p = gen_pattern ~next_id:(ref 0) ~bind_as:v p in
@@ -28,10 +33,10 @@ let tt =
 
       "simple_let" >::
         begin fun _ ->
-        assert_equal (A.Exp.let_ ~loc
+        assert_equal (A.Exp.let_
                         Asttypes.Nonrecursive
-                        [ A.Vb.mk ~loc
-                            (A.Pat.var ~loc id_x)
+                        [ A.Vb.mk
+                            (A.Pat.var id_x)
                             tmp_exp1 ]
                         tmp_exp2)
           (simple_let id_x tmp_exp1 tmp_exp2);
@@ -39,20 +44,41 @@ let tt =
 
       "gen_pattern(1)" >::
         begin fun _ ->
-        assert_equal (A.Pat.any ~loc ()) (fst (gen_pat (NPpat_any loc)));
-        assert_equal (A.Pat.var ~loc id_x) (fst (gen_pat ~v:(Some id_x) (NPpat_any loc)));
-        assert_equal (A.Pat.var ~loc id_x) (fst (gen_pat var_x));
-        assert_equal (A.Pat.alias ~loc (A.Pat.var id_x) id_y) (fst (gen_pat ~v:(Some id_y) var_x))
+        assert_equal (A.Pat.any ()) (fst (gen_pat any));
+        assert_equal (A.Pat.var id_x) (fst (gen_pat ~v:(Some id_x) any));
+        assert_equal (A.Pat.var id_x) (fst (gen_pat var_x));
+        assert_equal (A.Pat.alias (A.Pat.var id_x) id_y) (fst (gen_pat ~v:(Some id_y) var_x))
         end;
 
       "gen_pattern(2)" >::
         begin fun _ ->
-        assert_equal (A.Pat.var ~loc id_x) (fst (gen_pat (NPpat_alias (NPpat_any loc, id_x))));
-        (* BEFORE: (x as y) as z *)
-        (* AFTER:  x as y -> let z = y in ... *)
+        (* _ as x  ==>  x *)
+        assert_equal (A.Pat.var id_x) (fst (gen_pat (NPpat_alias (any, id_x))));
+        (* BEFORE: (x as y) as z -> ee *)
+        (* AFTER:  x as y        -> let z = y in ee *)
         let p, f = gen_pat ~v:(Some id_z) (NPpat_alias (var_x, id_y)) in
-        assert_equal (A.Pat.alias ~loc (A.Pat.var id_x) id_y) p;
+        assert_equal (A.Pat.alias (A.Pat.var id_x) id_y) p;
         assert_equal (simple_let id_z (exp_of_id id_y) tmp_exp1) (f tmp_exp1);
+        end;
+
+      "gen_pattern(3)" >::
+        begin fun _ ->
+        assert_equal (A.Pat.tuple
+                        [ A.Pat.var id_x;
+                          A.Pat.any () ])
+          (fst (gen_pat (NPpat_tuple ([ var_x; any ], loc))));
+
+        (* BEFORE: (x,_) as y           -> ee *)
+        (* AFTER:  (x as t_0, t_1)      -> let y = t_0, t_1 in ee *)
+        let p, f = gen_pat ~v:(Some id_y)
+                     (NPpat_tuple ([ var_x; any ], loc)) in
+        assert_equal (A.Pat.tuple
+                        [ A.Pat.alias (A.Pat.var id_x) id_tmp0;
+                          A.Pat.var id_tmp1 ]) p;
+        assert_equal (simple_let id_y
+                        (A.Exp.tuple [ exp_of_id id_tmp0; exp_of_id id_tmp1 ])
+                        tmp_exp1)
+          (f tmp_exp1);
         end;
 
     ]

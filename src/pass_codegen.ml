@@ -71,25 +71,25 @@ let rec gen_pattern ~next_id ~bind_as pat =
   match pat with
   | NPpat_any _ ->
      let p = match bind_as with
-       | Some id -> A.Pat.var ~loc id
        | None -> A.Pat.any ~loc ()
+       | Some id -> A.Pat.var ~loc id (* [_ as x] becomes just [x] *)
      in p, identity
 
   | NPpat_var id ->
      let p0 = A.Pat.var ~loc:id.loc id in
      let p = match bind_as with
-       | Some id' -> A.Pat.alias ~loc:id.loc p0 id'
        | None -> p0
+       | Some id' -> A.Pat.alias ~loc:id.loc p0 id' (* [x as y] = [x as y] *)
      in p, identity
 
   | NPpat_alias (pat, id) ->
      begin match bind_as with
      | None -> gen_pattern ~next_id ~bind_as:(Some id) pat
-     | Some sub_id ->
+     | Some outer_id ->
         (* BEFORE: (p as x) as y -> e
            AFTER: p as x -> let y = x in e *)
-        let p, f = gen_pattern ~next_id ~bind_as pat in
-        p, f % simple_let id (exp_of_id sub_id)
+        let p, f = gen_pattern ~next_id ~bind_as:(Some id) pat in
+        p, f % simple_let outer_id (exp_of_id id)
      end
 
   | NPpat_tuple (pats, _) ->
@@ -117,20 +117,23 @@ let rec gen_pattern ~next_id ~bind_as pat =
 
   | NPpat_variant (lbl, opt_pat, _) ->
      (* TODO: this may be refactor-able, but i'm not sure. *)
-     begin match bind_as, opt_pat with
+     begin match opt_pat, bind_as with
      | None, None ->
         A.Pat.variant ~loc lbl None, identity
-     | Some id, None ->
+     | None, Some id ->
+        (* note: we can't just do [`Var as x] because that may cause type errors
+           if we're expecting the reinterpret the variant. *)
         A.Pat.variant ~loc lbl None,
         simple_let id (A.Exp.variant ~loc lbl None)
-     | None, Some pat ->
+     | Some pad, None ->
         let p, f = gen_pattern ~next_id ~bind_as:None pat in
         A.Pat.variant ~loc lbl (Some p), identity
-     | Some id, Some pat ->
+     | Some pat, Some id ->
         let bind = fresh ~next_id ~loc in
         let p, f = gen_pattern ~next_id ~bind_as:(Some bind) pat in
         A.Pat.variant ~loc lbl (Some p),
         simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
      end
+
 
   | _ -> failwith "unimplemented pattern"

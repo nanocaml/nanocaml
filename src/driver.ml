@@ -14,7 +14,7 @@ let rewriter _config _cookies =
       ->
        let lang = Lang.language_of_module mb in
        Lang.add_language lang;
-       let mb' = Codegen.gen_module_binding lang in
+       let mb' = Lang_codegen.gen_module_binding lang in
        {pstr_loc = loc;
         pstr_desc = Pstr_module mb'}
 

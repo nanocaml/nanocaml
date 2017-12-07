@@ -4,9 +4,9 @@ open Ast_405.Parsetree
 open Ast_405.Ast_helper
 
 let tt =
-  "codegen" >:::
+  "lang_codegen" >:::
     let open Nanocaml.Lang in
-    let open Nanocaml.Codegen in
+    let open Nanocaml.Lang_codegen in
     let loc = !default_loc in
     let ct_int = [%type: int] in
     let ct_expr = Typ.constr {txt = Lident "expr"; loc} [] in

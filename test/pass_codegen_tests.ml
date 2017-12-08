@@ -13,8 +13,7 @@ let tt =
   let id_z = Location.mkloc "z" loc in
   let id_tmp0 = fresh (ref 0) loc in
   let id_tmp1 = fresh (ref 1) loc in
-  (* let id_tmp2 = fresh (ref 2) loc in
-     let id_tmp3 = fresh (ref 2) loc in *)
+  let id_tmp2 = fresh (ref 2) loc in
   let var_x = NPpat_var id_x in
   let var_y = NPpat_var id_y in
   let any = NPpat_any loc in
@@ -171,6 +170,27 @@ let tt =
                            (exp_of_id id_x))
                         test_exp1)
           (f test_exp1);
+        end;
+
+      "gen_pattern(7)" >::
+        begin fun _ ->
+        (* BEFORE: (x,_,y) [@l] -> ee
+           AFTER: t0 -> let x,y = Lib.fold t0 ([], []) (fun (x,_,y) (t1,t2) -> x::t1, y::t2) in ee *)
+        let empty = A.Exp.construct {txt = Lident "[]"; loc} None in
+        let cons e1 e2 = A.Exp.construct {txt = Lident "::"; loc} (Some (A.Exp.tuple [ e1; e2 ])) in
+        let p, f = gen_pat (NPpat_map (NPpat_tuple ([ var_x; any; var_y ], loc))) in
+        assert_equal (A.Pat.var id_tmp0) p;
+        assert_equal (simple_pat_let
+                        (A.Pat.tuple [ A.Pat.var id_x; A.Pat.var id_y ])
+                        (Lib_ast.fold_exp ~loc
+                           (exp_of_id id_tmp0)
+                           (A.Exp.tuple [ empty; empty ])
+                           (A.Pat.tuple [ A.Pat.var id_x; A.Pat.any (); A.Pat.var id_y ])
+                           (A.Pat.tuple [ A.Pat.var id_tmp1; A.Pat.var id_tmp2 ])
+                           (A.Exp.tuple [ cons (exp_of_id id_x) (exp_of_id id_tmp1);
+                                          cons (exp_of_id id_y) (exp_of_id id_tmp2) ]))
+                        test_exp2)
+          (f test_exp2);
         end;
 
     ]

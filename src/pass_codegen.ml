@@ -193,6 +193,11 @@ let rec gen_pattern ~next_id ~bind_as pat =
         simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
      end
 
+  (* this should never be the case after typeck, but
+     in case it is, just ignore the missing catamorphism. *)
+  | NPpat_cata (pat, None) ->
+     gen_pattern ~next_id ~bind_as pat
+
   | NPpat_cata (pat, Some cata_exp) ->
      (* BEFORE: (p [@r cata]) -> e
         AFTER: t0 -> let p = cata t0 in e *)
@@ -202,11 +207,6 @@ let rec gen_pattern ~next_id ~bind_as pat =
                           [ Nolabel, exp_of_id cata_tmp ] in
      A.Pat.var ~loc cata_tmp,
      simple_pat_let p app_cata_exp
-
-  (* this should never be the case after typeck, but
-     in case it is, just ignore the missing catamorphism. *)
-  | NPpat_cata (pat, None) ->
-     gen_pattern ~next_id ~bind_as pat
 
   | NPpat_map pat ->
      (* (x,y) [@l] as z = (x,y) as z [@l] *)
@@ -228,12 +228,28 @@ let rec gen_pattern ~next_id ~bind_as pat =
              (gen_simple_pat pat)  (* (fun pat -> *)
              (exp_of_id x_id))     (*   x) *)
 
-     | var_ids ->
-        (* BEFORE: (x,y) [@l] -> e
-        AFTER:  t0 -> let x,y =
-                        Lib.fold t0 ([], [])
-                          (fun p (xs, ys) ->
-                             x::xs, y::ys)
-                      in e *)
-        failwith "dear god"
+     | vars ->
+        (* BEFORE: p [@l] -> e
+           AFTER:  t0 -> let x,y ... =
+                           Lib.fold t0 ([], [] ...)
+                             (fun p (xs, ys ...) -> x::xs, y::ys ...)
+                         in e *)
+        let empty_exp = A.Exp.construct ~loc {txt = Lident "[]"; loc} None in
+        let cons_exp e1 e2 = A.Exp.construct ~loc {txt = Lident "::"; loc} (Some (A.Exp.tuple ~loc [ e1; e2 ])) in
+
+        let list_tmp = fresh ~next_id ~loc in
+        let acc_tmps = List.map (fun _ -> fresh ~next_id ~loc) vars in
+
+        A.Pat.var ~loc list_tmp,
+        simple_pat_let (A.Pat.tuple ~loc (List.map (fun var -> A.Pat.var ~loc {txt = var; loc}) vars))
+          (Lib_ast.fold_exp ~loc
+             (exp_of_id list_tmp) (* t0 *)
+             (A.Exp.tuple ~loc (List.map (const empty_exp) acc_tmps)) (* ([], ...) *)
+             (gen_simple_pat pat) (* p *)
+             (A.Pat.tuple ~loc (List.map (A.Pat.var ~loc) acc_tmps)) (* (xs, ...) *)
+             (A.Exp.tuple ~loc (List.map2 (fun var acc_id ->
+                                    cons_exp (* (x::xs, ...) *)
+                                      (A.Exp.ident ~loc {txt = Lident var; loc})
+                                      (exp_of_id acc_id))
+                                  vars acc_tmps)))
      end

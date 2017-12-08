@@ -43,10 +43,10 @@ let tt =
           (simple_let id_x test_exp1 test_exp2);
         end;
 
-      "vars_of_np_pat" >::
+      "vars_of_pattern" >::
         begin fun _ ->
         assert_equal [ id_x; id_y; id_z ] (* alphabetical; sorted from Set.String *)
-          (vars_of_np_pat ~loc
+          (vars_of_pattern ~loc
              (NPpat_tuple ([ var_y;
                              any;
                              NPpat_map (NPpat_variant ("X", Some var_x, loc));

@@ -68,7 +68,7 @@ let fresh ~next_id ~loc =
     returns [string loc]'s for each variable, with the loc
     being the loc given to this function, not the loc of the
     occurence of the variable! *)
-let vars_of_np_pat ~loc pat0 =
+let vars_of_pattern ~loc pat0 =
   let open Set.String in
   let rec trav vrs = function
     | NPpat_any _ -> vrs

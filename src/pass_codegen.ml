@@ -125,7 +125,7 @@ let rec gen_pattern ~next_id ~bind_as pat =
            if we're expecting the reinterpret the variant. *)
         A.Pat.variant ~loc lbl None,
         simple_let id (A.Exp.variant ~loc lbl None)
-     | Some pad, None ->
+     | Some pat, None ->
         let p, f = gen_pattern ~next_id ~bind_as:None pat in
         A.Pat.variant ~loc lbl (Some p), identity
      | Some pat, Some id ->
@@ -134,6 +134,5 @@ let rec gen_pattern ~next_id ~bind_as pat =
         A.Pat.variant ~loc lbl (Some p),
         simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
      end
-
 
   | _ -> failwith "unimplemented pattern"

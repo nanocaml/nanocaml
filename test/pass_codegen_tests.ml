@@ -79,6 +79,25 @@ let tt =
                         test_exp1)
           (f test_exp1);
         end;
+
+      "gen_pattern(4)" >::
+        begin fun _ ->
+        assert_equal (A.Pat.variant "Z" None) (fst (gen_pat (NPpat_variant ("Z", None, loc))));
+        assert_equal (A.Pat.variant "S" (Some (A.Pat.any ())))
+          (fst (gen_pat (NPpat_variant ("S", Some any, loc))));
+        (* BEFORE: `Z as y -> ee
+           AFTER:  `Z      -> let y = `Z in e *)
+        let p1, f1 = gen_pat ~v:(Some id_y) (NPpat_variant ("Z", None, loc)) in
+        assert_equal (A.Pat.variant "Z" None) p1;
+        assert_equal (simple_let id_y (A.Exp.variant "Z" None) test_exp1) (f1 test_exp1);
+        (* BEFORE: (`S _) as y -> ee
+           AFTER:  `S t_0      -> let y = `S t_0 in ee *)
+        let p2, f2 = gen_pat ~v:(Some id_y) (NPpat_variant ("S", Some any, loc)) in
+        assert_equal (A.Pat.variant "S" (Some (A.Pat.var id_tmp0))) p2;
+        assert_equal (simple_let id_y
+                        (A.Exp.variant "S" (Some (exp_of_id id_tmp0)))
+                        test_exp2)
+          (f2 test_exp2);
         end;
 
     ]

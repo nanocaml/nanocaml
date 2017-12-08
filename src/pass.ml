@@ -99,7 +99,16 @@ and pat_of_pattern p =
          let {txt; loc} : string loc = attr in
          match txt, payload with
          | "l", _ -> NPpat_map pat
-         | "r", _ -> NPpat_cata (pat, None)
+         | "r", _ ->
+            begin match payload with
+            | PStr [ {pstr_desc = Pstr_eval (e, _)} ] ->
+               NPpat_cata (pat, Some e)
+            | PStr [ ] ->
+               NPpat_cata (pat, None)
+            | _ ->
+               Location.raise_errorf ~loc
+                 "invalid argument to [@r] attribute"
+            end
          | _ -> pat)
        base_pat
 

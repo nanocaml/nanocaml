@@ -201,13 +201,20 @@ let tt =
         | _ -> assert_failure "np_pat variant does not match"
         end;
 
-      (* currently unimplemented *)
-      (* "pat_of_pattern(4)" >::
+      "pat_of_pattern(5)" >::
         begin fun _ ->
         match pat_of_pattern [%pat? e' [@r expr]] with
         | NPpat_cata (NPpat_var _, Some {pexp_desc = Pexp_ident {txt = Lident "expr"}}) -> ()
         | _ -> assert_failure "np_pattern explicit cata does not match"
-        end; *)
+        end;
+
+      "pat_of_pattern(6)" >::
+        begin fun _ ->
+        try
+          pat_of_pattern [%pat? e' [@r: expr]]
+          |> ignore; assert_failure "expected [@r] with PSig to fail";
+        with Location.Error _ -> ()
+        end;
 
       "processor_of_rhs(1)" >::
         begin fun _ ->

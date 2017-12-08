@@ -198,7 +198,7 @@ let tt =
       "gen_processor_vb(1)" >::
         begin fun _ ->
         let proc = processor_of_rhs
-                     ~name:"passname"
+                     ~name:"b_of_a"
                      ~dom:test_L0_a
                      ~cod:(Some test_L0_b)
                      ~loc
@@ -209,12 +209,10 @@ let tt =
         in
         (* let passname u = *)
         match gen_processor_vb test_L0 test_L0 proc with
-        | {pvb_pat = {ppat_desc = Ppat_var {txt = "passname"}};
-           pvb_expr =
-             {pexp_desc =
-                Pexp_fun
-                  (Nolabel, None, {ppat_desc = Ppat_var {txt = "u"}},
-                   matcher_fn)}}
+        | {pvb_pat = {ppat_desc = Ppat_var {txt = "b_of_a"}};
+           pvb_expr = {pexp_desc =
+                         Pexp_fun
+                           (Nolabel, None, {ppat_desc = Ppat_var {txt = "u"}}, matcher_fn)}}
           ->
            (* fun (arg0 : L0.a) : L0.b -> match arg0 with ... *)
            begin match matcher_fn with
@@ -222,8 +220,7 @@ let tt =
                 Pexp_fun
                   (Nolabel, None,
                    {ppat_desc = Ppat_constraint (_, typ_in)},
-                   {pexp_desc = Pexp_constraint ({pexp_desc = Pexp_match (_, cases)},
-                                                 typ_out)})}
+                   {pexp_desc = Pexp_constraint ({pexp_desc = Pexp_match (_, cases)}, typ_out)})}
              ->
               assert_equal ~msg:"in = L0.a"
                 (A.Typ.constr {txt = Ldot (Lident "Test_L0", "a"); loc} []) typ_in;
@@ -234,9 +231,9 @@ let tt =
                   {pc_lhs = {ppat_desc = Ppat_variant ("A", Some _)};
                    pc_guard = None;
                    pc_rhs = {pexp_desc =
-                               Pexp_let (Nonrecursive, [_],
-                                         {pexp_desc =
-                                            Pexp_constant (Pconst_integer ("1", _))})}};
+                               Pexp_let
+                                 (Nonrecursive, [_],
+                                  {pexp_desc = Pexp_constant (Pconst_integer ("1", _))})}};
                   (* | `A0 -> 0 *)
                   {pc_lhs = {ppat_desc = Ppat_variant ("A0", None)};
                    pc_rhs = {pexp_desc = Pexp_constant (Pconst_integer ("0", _))}} ]
@@ -246,6 +243,29 @@ let tt =
               end
            | _ -> assert_failure "outer OK; matcher_fn invalid"
            end
+        | _ -> assert_failure "processor output invalid"
+        end;
+
+      "gen_processor_vb(2)" >::
+        begin fun _ ->
+        let proc = processor_of_rhs
+                     ~name:"a_something"
+                     ~dom:test_L0_a
+                     ~cod:None
+                     ~loc
+                     [%expr function
+                         | `A _ as a -> 1
+                         | `A0 -> 0 ]
+        in
+        (* let passname (arg0 : L0.a) -> match arg0 with ... -- no output contraint*)
+        match gen_processor_vb test_L0 test_L0 proc with
+        | {pvb_pat = {ppat_desc = Ppat_var {txt = "a_something"}};
+           pvb_expr = {pexp_desc =
+                         Pexp_fun
+                           (Nolabel, None,
+                            {ppat_desc = Ppat_constraint (_, typ_in)},
+                            {pexp_desc = Pexp_match (_, [ case1; case2 ])})}}
+          -> ()
         | _ -> assert_failure "processor output invalid"
         end;
 

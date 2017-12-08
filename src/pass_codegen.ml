@@ -64,11 +64,9 @@ let fresh ~next_id ~loc =
 
 (* nanopass ast helpers --------------------------------------------------------- *)
 
-(** finds all the variables mentioned in the given pattern.
-    returns [string loc]'s for each variable, with the loc
-    being the loc given to this function, not the loc of the
-    occurence of the variable! *)
-let vars_of_pattern ~loc pat0 =
+(** finds all the variables mentioned in the given pattern. returns
+    a list of their names only, sorted alphabetically. *)
+let vars_of_pattern pat0 : string list =
   let open Set.String in
   let rec trav vrs = function
     | NPpat_any _ -> vrs
@@ -80,9 +78,7 @@ let vars_of_pattern ~loc pat0 =
     | NPpat_map pat -> trav vrs pat
     | NPpat_cata (pat, _) -> trav vrs pat
   in
-  Set.String.enum (trav empty pat0)
-  |> Enum.map (fun x -> ({txt = x; loc} : string loc))
-  |> List.of_enum
+  Set.String.to_list (trav empty pat0)
 
 
 (* library --------------------------------------------------------- *)
@@ -90,6 +86,7 @@ let vars_of_pattern ~loc pat0 =
 module Lib_ast = struct
   open Longident
   let fold_lid = Ldot (Ldot (Lident "Nanocaml", "Lib"), "fold")
+  let map_lid = Ldot (Ldot (Lident "Nanocaml", "Lib"), "map")
 
   (** generates expression of the form [fold l z0 (fun x z -> e)]. **)
   let fold_exp ~loc list_exp init_exp elem_pat acc_pat body_exp =
@@ -99,10 +96,25 @@ module Lib_ast = struct
         Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat
                    (A.Exp.fun_ ~loc Nolabel None acc_pat
                       body_exp) ]
+
+  (** generates expression of the form [map l (fun p -> e)]. **)
+  let map_exp ~loc list_exp elem_pat body_exp =
+    A.Exp.apply ~loc (A.Exp.ident ~loc {txt = map_lid; loc})
+      [ Nolabel, list_exp;
+        Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat body_exp ]
 end
 
 
 (* codegen begins here --------------------------------------------------------- *)
+
+(** given an unconditional pattern, converts it to an equivalent parsetree pattern. *)
+let rec gen_simple_pat = function
+  | NPpat_any loc -> A.Pat.any ~loc ()
+  | NPpat_var id -> A.Pat.var ~loc:id.loc id
+  | NPpat_alias (pat, id) -> A.Pat.alias ~loc:id.loc (gen_simple_pat pat) id
+  | NPpat_tuple (pats, loc) -> A.Pat.tuple ~loc (List.map gen_simple_pat pats)
+  | pat -> failwith "gen_simple_pat called on non-simple pat"
+
 
 (** given an [np_pat], returns [p, f], where [p] is the generated
     pattern, and [f] is a function on expressions which introduces
@@ -191,4 +203,37 @@ let rec gen_pattern ~next_id ~bind_as pat =
      A.Pat.var ~loc cata_tmp,
      simple_pat_let p app_cata_exp
 
-  | _ -> failwith "unimplemented pattern"
+  (* this should never be the case after typeck, but
+     in case it is, just ignore the missing catamorphism. *)
+  | NPpat_cata (pat, None) ->
+     gen_pattern ~next_id ~bind_as pat
+
+  | NPpat_map pat ->
+     (* (x,y) [@l] as z = (x,y) as z [@l] *)
+     let pat = match bind_as with
+       | None -> pat
+       | Some id -> NPpat_alias (pat, id)
+     in
+     begin match vars_of_pattern pat with
+     | [] -> A.Pat.any ~loc (), identity
+     | [x] ->
+        (* BEFORE: (x,_) [@l] -> e
+           AFTER:  t0 -> let x = Lib.map t0 (fun (x,_) -> x) in e *)
+        let list_tmp = fresh ~next_id ~loc in
+        let x_id : string loc = {txt = x; loc} in
+        A.Pat.var ~loc list_tmp,
+        simple_let x_id
+          (Lib_ast.map_exp ~loc    (* Lib.map *)
+             (exp_of_id list_tmp)  (* list_tmp *)
+             (gen_simple_pat pat)  (* (fun pat -> *)
+             (exp_of_id x_id))     (*   x) *)
+
+     | var_ids ->
+        (* BEFORE: (x,y) [@l] -> e
+        AFTER:  t0 -> let x,y =
+                        Lib.fold t0 ([], [])
+                          (fun p (xs, ys) ->
+                             x::xs, y::ys)
+                      in e *)
+        failwith "dear god"
+     end

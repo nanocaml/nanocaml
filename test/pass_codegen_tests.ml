@@ -157,4 +157,20 @@ let tt =
           (f test_exp2);
         end;
 
+      "gen_pattern(6)" >::
+        begin fun _ ->
+        (* BEFORE: (x,_) [@l] -> ee
+           AFTER: t0 -> let x = Lib.map t0 (fun (x,_) -> x) in ee *)
+        let p, f = gen_pat (NPpat_map (NPpat_tuple ([ var_x; any ], loc))) in
+        assert_equal (A.Pat.var id_tmp0) p;
+        assert_equal (simple_let id_x
+                        (Lib_ast.map_exp ~loc
+                           (exp_of_id id_tmp0)
+                           (A.Pat.tuple [ A.Pat.var id_x;
+                                          A.Pat.any () ])
+                           (exp_of_id id_x))
+                        test_exp1)
+          (f test_exp1);
+        end;
+
     ]

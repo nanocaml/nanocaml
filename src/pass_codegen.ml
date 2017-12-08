@@ -49,6 +49,12 @@ let simple_let ?(recflag=Asttypes.Nonrecursive) x e1 e2 =
   let vb = A.Vb.mk ~loc (A.Pat.var ~loc x) e1 in
   A.Exp.let_ ~loc recflag [ vb ] e2
 
+(** generates simple [let p = e1 in e2] expression **)
+let simple_pat_let ?(recflag=Asttypes.Nonrecursive) p e1 e2 =
+  let loc = p.ppat_loc in
+  let vb = A.Vb.mk ~loc p e1 in
+  A.Exp.let_ ~loc recflag [ vb ] e2
+
 (** generate fresh [string loc] using the given [int ref]. *)
 let fresh ~next_id ~loc =
   let i = !next_id in
@@ -134,5 +140,15 @@ let rec gen_pattern ~next_id ~bind_as pat =
         A.Pat.variant ~loc lbl (Some p),
         simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
      end
+
+  | NPpat_cata (pat, Some cata_exp) ->
+     (* BEFORE: (p [@r cata]) -> e
+        AFTER: t0 -> let p = cata t0 in e *)
+     let cata_tmp = fresh ~next_id ~loc in
+     let p, f = gen_pattern ~next_id ~bind_as pat in
+     let app_cata_exp = A.Exp.apply ~loc cata_exp
+                          [ Nolabel, exp_of_id cata_tmp ] in
+     A.Pat.var ~loc cata_tmp,
+     simple_pat_let p app_cata_exp
 
   | _ -> failwith "unimplemented pattern"

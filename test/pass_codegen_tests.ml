@@ -17,8 +17,8 @@ let tt =
      let id_tmp3 = fresh (ref 2) loc in *)
   let var_x = NPpat_var id_x in
   let any = NPpat_any loc in
-  let test_exp1 = [%expr 1 + 3 * 4] in
-  let test_exp2 = [%expr 8 * f 9] in
+  let test_exp1 = [%expr foo a b c] in
+  let test_exp2 = [%expr 1 + 2 * 3] in
   let gen_pat ?(v=None) p = gen_pattern ~next_id:(ref 0) ~bind_as:v p in
   "pass_codegen" >:::
     [
@@ -98,6 +98,19 @@ let tt =
                         (A.Exp.variant "S" (Some (exp_of_id id_tmp0)))
                         test_exp2)
           (f2 test_exp2);
+        end;
+
+      "gen_pattern(5)" >::
+        begin fun _ ->
+        (* BEFORE: x [@r test1] -> ee
+           AFTER:  t_0          -> let x = test1 t_0 in ee *)
+        let p, f = gen_pat (NPpat_cata (var_x, Some test_exp1)) in
+        assert_equal (A.Pat.var id_tmp0) p;
+        assert_equal (simple_let id_x
+                        (A.Exp.apply test_exp1
+                           [ Nolabel, exp_of_id id_tmp0 ])
+                        test_exp2)
+          (f test_exp2);
         end;
 
     ]

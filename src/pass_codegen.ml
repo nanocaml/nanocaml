@@ -85,6 +85,23 @@ let vars_of_np_pat ~loc pat0 =
   |> List.of_enum
 
 
+(* library --------------------------------------------------------- *)
+
+module Lib_ast = struct
+  open Longident
+  let fold_lid = Ldot (Ldot (Lident "Nanocaml", "Lib"), "fold")
+
+  (** generates expression of the form [fold l z0 (fun x z -> e)]. **)
+  let fold_exp ~loc list_exp init_exp elem_pat acc_pat body_exp =
+    A.Exp.apply ~loc (A.Exp.ident ~loc {txt = fold_lid; loc})
+      [ Nolabel, list_exp;
+        Nolabel, init_exp;
+        Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat
+                   (A.Exp.fun_ ~loc Nolabel None acc_pat
+                      body_exp) ]
+end
+
+
 (* codegen begins here --------------------------------------------------------- *)
 
 (** given an [np_pat], returns [p, f], where [p] is the generated

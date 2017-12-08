@@ -43,13 +43,6 @@ let tt =
           (simple_let id_x test_exp1 test_exp2);
         end;
 
-      "Lib.fold" >::
-        begin fun _ ->
-        assert_equal "a-bc-d-e"
-          (Nanocaml.Lib.fold ["a"; "bc"; "d"] "e"
-             (Printf.sprintf "%s-%s"));
-        end;
-
       "vars_of_np_pat" >::
         begin fun _ ->
         assert_equal [ id_x; id_y; id_z ] (* alphabetical; sorted from Set.String *)
@@ -59,6 +52,30 @@ let tt =
                              NPpat_map (NPpat_variant ("X", Some var_x, loc));
                              NPpat_cata (NPpat_alias (any, id_z), None) ],
                            loc)));
+        end;
+
+      "Lib.fold" >::
+        begin fun _ ->
+        assert_equal "a-bc-d-e"
+          (Nanocaml.Lib.fold ["a"; "bc"; "d"] "e"
+             (Printf.sprintf "%s-%s"));
+        end;
+
+      "fold_exp" >::
+        begin fun _ ->
+        let l = exp_of_id id_y in
+        let z0 = exp_of_id id_z in
+        let x = A.Pat.var id_x in
+        let z = A.Pat.var id_z in
+        let e = test_exp1 in
+        assert_equal (A.Exp.apply
+                        (A.Exp.ident
+                           {txt = Ldot (Ldot (Lident "Nanocaml", "Lib"), "fold"); loc})
+                        [ Nolabel, l;
+                          Nolabel, z0;
+                          Nolabel, A.Exp.fun_ Nolabel None x
+                                     (A.Exp.fun_ Nolabel None z e) ])
+          (Lib_ast.fold_exp ~loc l z0 x z e);
         end;
 
       "gen_pattern(1)" >::

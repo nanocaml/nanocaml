@@ -17,4 +17,16 @@ module%language Lsecond = struct
     ; add : [ `Bc ] }
 end
 
-let z : Lsecond.b = `Bc
+
+module%language L0 = struct
+  type nt = [ `Pairs of (int * string) list ]
+end
+
+module%language L1 = struct
+  type nt = [ `Lists of (int list * string list) ]
+end
+
+let[@pass L0 => L1] split nt0 =
+  let rec nt = function
+    | `Pairs ((x,y) [@l]) -> `Lists (x, y)
+  in nt nt0

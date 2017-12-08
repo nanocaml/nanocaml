@@ -308,3 +308,18 @@ let gen_processor_vb l0 l1 proc =
          A.Exp.fun_ ~loc:p.ppat_loc lbl dflt p body_exp)
        proc.npc_args
        clauses_fn_expr)
+
+
+(** generate [value_binding] from [np_pass]. **)
+let gen_pass_vb pass =
+  let loc = pass.npp_loc in
+  let l0 = pass.npp_input in
+  let l1 = pass.npp_output in
+  let pre_introducer = pass.npp_pre in
+  let proc_vbs = List.map (gen_processor_vb l0 l1) pass.npp_procs in
+  A.Vb.mk ~loc
+    (A.Pat.var ~loc {txt = pass.npp_name; loc})
+    (pre_introducer
+       (A.Exp.let_ ~loc Recursive
+          proc_vbs
+          pass.npp_post))

@@ -17,8 +17,8 @@ let tt =
      let id_tmp3 = fresh (ref 2) loc in *)
   let var_x = NPpat_var id_x in
   let any = NPpat_any loc in
-  let tmp_exp1 = [%expr 1 + 3 * 4] in
-  let tmp_exp2 = [%expr 8 * f 9] in
+  let test_exp1 = [%expr 1 + 3 * 4] in
+  let test_exp2 = [%expr 8 * f 9] in
   let gen_pat ?(v=None) p = gen_pattern ~next_id:(ref 0) ~bind_as:v p in
   "pass_codegen" >:::
     [
@@ -37,9 +37,9 @@ let tt =
                         Asttypes.Nonrecursive
                         [ A.Vb.mk
                             (A.Pat.var id_x)
-                            tmp_exp1 ]
-                        tmp_exp2)
-          (simple_let id_x tmp_exp1 tmp_exp2);
+                            test_exp1 ]
+                        test_exp2)
+          (simple_let id_x test_exp1 test_exp2);
         end;
 
       "gen_pattern(1)" >::
@@ -58,7 +58,7 @@ let tt =
         (* AFTER:  x as y        -> let z = y in ee *)
         let p, f = gen_pat ~v:(Some id_z) (NPpat_alias (var_x, id_y)) in
         assert_equal (A.Pat.alias (A.Pat.var id_x) id_y) p;
-        assert_equal (simple_let id_z (exp_of_id id_y) tmp_exp1) (f tmp_exp1);
+        assert_equal (simple_let id_z (exp_of_id id_y) test_exp1) (f test_exp1);
         end;
 
       "gen_pattern(3)" >::
@@ -67,9 +67,8 @@ let tt =
                         [ A.Pat.var id_x;
                           A.Pat.any () ])
           (fst (gen_pat (NPpat_tuple ([ var_x; any ], loc))));
-
-        (* BEFORE: (x,_) as y           -> ee *)
-        (* AFTER:  (x as t_0, t_1)      -> let y = t_0, t_1 in ee *)
+        (* BEFORE: (x,_) as y           -> ee
+           AFTER:  (x as t_0, t_1)      -> let y = t_0, t_1 in ee *)
         let p, f = gen_pat ~v:(Some id_y)
                      (NPpat_tuple ([ var_x; any ], loc)) in
         assert_equal (A.Pat.tuple
@@ -77,8 +76,9 @@ let tt =
                           A.Pat.var id_tmp1 ]) p;
         assert_equal (simple_let id_y
                         (A.Exp.tuple [ exp_of_id id_tmp0; exp_of_id id_tmp1 ])
-                        tmp_exp1)
-          (f tmp_exp1);
+                        test_exp1)
+          (f test_exp1);
+        end;
         end;
 
     ]

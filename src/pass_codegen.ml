@@ -185,12 +185,12 @@ let rec gen_pattern ~next_id ~bind_as pat =
         simple_let id (A.Exp.variant ~loc lbl None)
      | Some pat, None ->
         let p, f = gen_pattern ~next_id ~bind_as:None pat in
-        A.Pat.variant ~loc lbl (Some p), identity
+        A.Pat.variant ~loc lbl (Some p), f
      | Some pat, Some id ->
         let bind = fresh ~next_id ~loc in
         let p, f = gen_pattern ~next_id ~bind_as:(Some bind) pat in
         A.Pat.variant ~loc lbl (Some p),
-        simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
+        f % simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
      end
 
   (* this should never be the case after typeck, but

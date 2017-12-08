@@ -194,6 +194,21 @@ let tt =
           (f test_exp2);
         end;
 
+      "gen_pattern(8)" >::
+        begin fun _ ->
+        (* BEFORE: `A (x [@l]) -> ee
+           AFTER: `A t0 -> let x = Lib.map t0 (fun x -> x) in ee *)
+        let p, f = gen_pat (NPpat_variant ("A", Some (NPpat_map var_x), loc)) in
+        assert_equal (A.Pat.variant "A" (Some (A.Pat.var id_tmp0))) p;
+        assert_equal (simple_let id_x
+                        (Lib_ast.map_exp ~loc
+                           (exp_of_id id_tmp0)
+                           (A.Pat.var id_x)
+                           (exp_of_id id_x))
+                        test_exp1)
+          (f test_exp1);
+        end;
+
 
       "gen_processor_vb(1)" >::
         begin fun _ ->

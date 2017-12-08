@@ -24,6 +24,7 @@ and np_processor =
   ; npc_cod : Lang.np_nonterm option (* co-domain nonterminal (or terminal, when [None]) *)
   ; npc_args : fun_arg list (* arguments to processor *)
   ; npc_clauses : clause list (* processor clauses *)
+  ; npc_clauses_loc : Location.t
   }
 
 and clause = np_pat * expression
@@ -59,8 +60,8 @@ let rec processor_of_rhs ~name ~dom ~cod ~loc e0 =
     | {pexp_desc = Pexp_fun (lbl, dflt, pat, body)} ->
        let arg = lbl, dflt, pat in
        get_args (arg::acc) body
-    | {pexp_desc = Pexp_function cases } ->
-       List.rev acc, cases
+    | {pexp_desc = Pexp_function cases; pexp_loc = clauses_loc} ->
+       List.rev acc, cases, clauses_loc
     | {pexp_loc = loc} ->
        Location.raise_errorf ~loc
          "processor must end in 'function' expression"
@@ -73,14 +74,15 @@ let rec processor_of_rhs ~name ~dom ~cod ~loc e0 =
     | None ->
        pat_of_pattern p, e
   in
-  let args, cases = get_args [] e0 in
+  let args, cases, clauses_loc = get_args [] e0 in
   let clauses = List.map clause_of_case cases in
   {npc_name = name;
    npc_dom = dom;
    npc_cod = cod;
    npc_loc = loc;
    npc_args = args;
-   npc_clauses = clauses}
+   npc_clauses = clauses;
+   npc_clauses_loc = clauses_loc}
 
 (** convert a [pattern] into a [np_pat]. **)
 and pat_of_pattern p =

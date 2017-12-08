@@ -7,6 +7,7 @@ module A = Ast_405.Ast_helper
 let tt =
   let open Nanocaml.Pass in
   let open Nanocaml.Pass_codegen in
+  let open Parsing_tests in
   let loc = !A.default_loc in
   let id_x = Location.mkloc "x" loc in
   let id_y = Location.mkloc "y" loc in
@@ -191,6 +192,57 @@ let tt =
                                           cons (exp_of_id id_y) (exp_of_id id_tmp2) ]))
                         test_exp2)
           (f test_exp2);
+        end;
+
+
+      "gen_processor_vb(1)" >::
+        begin fun _ ->
+        let proc = processor_of_rhs
+                     ~name:"passname"
+                     ~dom:test_L0_a
+                     ~cod:(Some test_L0_a)
+                     ~loc
+                     [%expr fun u ->
+                         function
+                         | `A _ as a -> 1
+                         | `A0 -> 0 ]
+        in
+        match gen_processor_vb proc with
+        | {pvb_pat = {ppat_desc = Ppat_var {txt = "passname"}};
+           pvb_expr =
+             {pexp_desc =
+                Pexp_fun
+                  (Nolabel, None, {ppat_desc = Ppat_var {txt = "u"}},
+                   {pexp_desc = annotated_matcher_fn})}}
+          ->
+
+           begin match annotated_matcher_fn with
+           | Pexp_constraint
+             ({pexp_desc =
+                 Pexp_fun
+                   (Nolabel, None, _,
+                    {pexp_desc = Pexp_match (_, cases)})},
+              {ptyp_desc = Ptyp_constr ({txt = Lident "a"}, [])})
+             ->
+
+              begin match cases with
+              | [ (* `A t0 -> let a = `A t0 in 1 *)
+                  {pc_lhs = {ppat_desc = Ppat_variant ("A", Some _)};
+                   pc_guard = None;
+                   pc_rhs = {pexp_desc =
+                               Pexp_let (Nonrecursive, [_],
+                                         {pexp_desc =
+                                            Pexp_constant (Pconst_integer ("1", _))})}};
+                  (* `A0 -> 0 *)
+                  {pc_lhs = {ppat_desc = Ppat_variant ("A0", None)};
+                   pc_rhs = {pexp_desc = Pexp_constant (Pconst_integer ("0", _))}} ]
+                -> ()
+
+              | _ -> assert_failure "matcher_fn OK; cases invalid"
+              end
+           | _ -> assert_failure "outer OK; matcher_fn invalid"
+           end
+        | _ -> assert_failure "invalid processor gen"
         end;
 
     ]

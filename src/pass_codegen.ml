@@ -59,7 +59,7 @@ let simple_pat_let ?(recflag=Asttypes.Nonrecursive) p e1 e2 =
 let fresh ~next_id ~loc =
   let i = !next_id in
   next_id := i + 1;
-  ({txt = Printf.sprintf "np_gen_id%d" i; loc} : string loc)
+  ({txt = Printf.sprintf "np tmp_id%d" i; loc} : string loc)
 
 
 (* nanopass ast helpers --------------------------------------------------------- *)
@@ -253,3 +253,53 @@ let rec gen_pattern ~next_id ~bind_as pat =
                                       (exp_of_id acc_id))
                                   vars acc_tmps)))
      end
+
+
+let typ_of_nonterm ~loc nt =
+  A.Typ.constr ~loc
+    {txt = Lident nt.npnt_name; loc}
+    []
+
+(** generate [value_binding] from [np_processor]. *)
+let gen_processor_vb proc =
+  let loc = proc.npc_loc in
+
+  (* generate pattern/exprs for clauses *)
+  let clause_lhs, clause_rhs =
+    List.enum proc.npc_clauses
+    |> Enum.map (fun (pat, rhs_exp) ->
+           let p_lhs, intro = gen_pattern ~next_id:(ref 0) ~bind_as:None pat in
+           p_lhs, intro rhs_exp)
+    |> Enum.collect2
+  in
+
+  (* generate domain/co-domain type *)
+  let dom_typ = typ_of_nonterm ~loc proc.npc_dom in
+  let opt_cod_typ = Option.map (typ_of_nonterm ~loc) proc.npc_cod in
+
+  (* generate [fun arg0 -> match arg0 with clause -> rhs ...] *)
+  let clauses_fn_expr =
+    let arg_id : string loc = {txt = "np proc_arg"; loc} in
+    A.Exp.fun_ ~loc:proc.npc_clauses_loc Nolabel None
+      (A.Pat.constraint_ ~loc (A.Pat.var ~loc arg_id) dom_typ) (* annotate domain type *)
+      (A.Exp.match_ ~loc (exp_of_id arg_id)
+         (List.map2 (fun lhs rhs ->
+              {pc_lhs = lhs;
+               pc_guard = None;
+               pc_rhs = rhs})
+            clause_lhs
+            clause_rhs))
+  in
+  (* annotate co-domain type *)
+  let clauses_fn_expr = match opt_cod_typ with
+    | None -> clauses_fn_expr
+    | Some typ -> A.Exp.constraint_ ~loc clauses_fn_expr typ
+  in
+
+  (* [let proc arg ... = function ...] *)
+  A.Vb.mk ~loc
+    (A.Pat.var ~loc {txt = proc.npc_name; loc})
+    (List.fold_right (fun (lbl, dflt, p) body_exp ->
+         A.Exp.fun_ ~loc:p.ppat_loc lbl dflt p body_exp)
+       proc.npc_args
+       clauses_fn_expr)

@@ -43,6 +43,13 @@ let tt =
           (simple_let id_x test_exp1 test_exp2);
         end;
 
+      "Lib.fold" >::
+        begin fun _ ->
+        assert_equal "a-bc-d-e"
+          (Nanocaml.Lib.fold ["a"; "bc"; "d"] "e"
+             (Printf.sprintf "%s-%s"));
+        end;
+
       "vars_of_np_pat" >::
         begin fun _ ->
         assert_equal [ id_x; id_y; id_z ] (* alphabetical; sorted from Set.String *)

@@ -45,8 +45,8 @@ let tt =
 
       "vars_of_pattern" >::
         begin fun _ ->
-        assert_equal [ id_x; id_y; id_z ] (* alphabetical; sorted from Set.String *)
-          (vars_of_pattern ~loc
+        assert_equal [ "x"; "y"; "z" ]
+          (vars_of_pattern
              (NPpat_tuple ([ var_y;
                              any;
                              NPpat_map (NPpat_variant ("X", Some var_x, loc));
@@ -54,15 +54,9 @@ let tt =
                            loc)));
         end;
 
-      "Lib.fold" >::
-        begin fun _ ->
-        assert_equal "a-bc-d-e"
-          (Nanocaml.Lib.fold ["a"; "bc"; "d"] "e"
-             (Printf.sprintf "%s-%s"));
-        end;
-
       "fold_exp" >::
         begin fun _ ->
+        assert_equal "a-bc-d-e" (Nanocaml.Lib.fold ["a"; "bc"; "d"] "e" (Printf.sprintf "%s-%s"));
         let l = exp_of_id id_y in
         let z0 = exp_of_id id_z in
         let x = A.Pat.var id_x in
@@ -76,6 +70,20 @@ let tt =
                           Nolabel, A.Exp.fun_ Nolabel None x
                                      (A.Exp.fun_ Nolabel None z e) ])
           (Lib_ast.fold_exp ~loc l z0 x z e);
+        end;
+
+      "map_exp" >::
+        begin fun _ ->
+        assert_equal [1;2;6] (Nanocaml.Lib.map [0;1;5] succ);
+        let l = exp_of_id id_y in
+        let x = A.Pat.var id_x in
+        let e = test_exp2 in
+        assert_equal (A.Exp.apply
+                        (A.Exp.ident
+                           {txt = Ldot (Ldot (Lident "Nanocaml", "Lib"), "map"); loc})
+                        [ Nolabel, l;
+                          Nolabel, A.Exp.fun_ Nolabel None x e ])
+          (Lib_ast.map_exp ~loc l x e);
         end;
 
       "gen_pattern(1)" >::

@@ -16,6 +16,7 @@ let tt =
   (* let id_tmp2 = fresh (ref 2) loc in
      let id_tmp3 = fresh (ref 2) loc in *)
   let var_x = NPpat_var id_x in
+  let var_y = NPpat_var id_y in
   let any = NPpat_any loc in
   let test_exp1 = [%expr foo a b c] in
   let test_exp2 = [%expr 1 + 2 * 3] in
@@ -40,6 +41,17 @@ let tt =
                             test_exp1 ]
                         test_exp2)
           (simple_let id_x test_exp1 test_exp2);
+        end;
+
+      "vars_of_np_pat" >::
+        begin fun _ ->
+        assert_equal [ id_x; id_y; id_z ] (* alphabetical; sorted from Set.String *)
+          (vars_of_np_pat ~loc
+             (NPpat_tuple ([ var_y;
+                             any;
+                             NPpat_map (NPpat_variant ("X", Some var_x, loc));
+                             NPpat_cata (NPpat_alias (any, id_z), None) ],
+                           loc)));
         end;
 
       "gen_pattern(1)" >::

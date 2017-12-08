@@ -35,7 +35,7 @@ let compose_all = function
   | fs -> fun x -> List.fold_right (fun f y -> f y) fs x
 
 
-(* ast helpers --------------------------------------------------------- *)
+(* ocaml ast helpers --------------------------------------------------------- *)
 
 (** convert [string loc] into [Longident.t loc] as just a [Lident]. **)
 let lident_of_id (id : string loc) = Location.mkloc (Longident.Lident id.txt) id.loc
@@ -60,6 +60,29 @@ let fresh ~next_id ~loc =
   let i = !next_id in
   next_id := i + 1;
   ({txt = Printf.sprintf "np_gen_id%d" i; loc} : string loc)
+
+
+(* nanopass ast helpers --------------------------------------------------------- *)
+
+(** finds all the variables mentioned in the given pattern.
+    returns [string loc]'s for each variable, with the loc
+    being the loc given to this function, not the loc of the
+    occurence of the variable! *)
+let vars_of_np_pat ~loc pat0 =
+  let open Set.String in
+  let rec trav vrs = function
+    | NPpat_any _ -> vrs
+    | NPpat_var {txt = x} -> add x vrs
+    | NPpat_alias (pat, {txt = x}) -> trav (add x vrs) pat
+    | NPpat_tuple (pats, _) -> List.fold_left trav vrs pats
+    | NPpat_variant (_, None, _) -> vrs
+    | NPpat_variant (_, Some pat, _) -> trav vrs pat
+    | NPpat_map pat -> trav vrs pat
+    | NPpat_cata (pat, _) -> trav vrs pat
+  in
+  Set.String.enum (trav empty pat0)
+  |> Enum.map (fun x -> ({txt = x; loc} : string loc))
+  |> List.of_enum
 
 
 (* codegen begins here --------------------------------------------------------- *)

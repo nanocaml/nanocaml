@@ -255,13 +255,14 @@ let rec gen_pattern ~next_id ~bind_as pat =
      end
 
 
-let typ_of_nonterm ~loc nt =
+(** generate type expression from language and nonterm **)
+let typ_of_nonterm ~loc lang nt =
   A.Typ.constr ~loc
-    {txt = Lident nt.npnt_name; loc}
+    {txt = Ldot (Lident lang.npl_name, nt.npnt_name); loc}
     []
 
-(** generate [value_binding] from [np_processor]. *)
-let gen_processor_vb proc =
+(** generate [value_binding] from [np_processor]. **)
+let gen_processor_vb l0 l1 proc =
   let loc = proc.npc_loc in
 
   (* generate pattern/exprs for clauses *)
@@ -274,26 +275,30 @@ let gen_processor_vb proc =
   in
 
   (* generate domain/co-domain type *)
-  let dom_typ = typ_of_nonterm ~loc proc.npc_dom in
-  let opt_cod_typ = Option.map (typ_of_nonterm ~loc) proc.npc_cod in
+  let dom_typ = typ_of_nonterm ~loc l0 proc.npc_dom in
+  let opt_cod_typ = Option.map (typ_of_nonterm ~loc l1) proc.npc_cod in
 
-  (* generate [fun arg0 -> match arg0 with clause -> rhs ...] *)
+  (* generate [match arg0 with clause -> rhs ...] *)
+  let arg_id : string loc = {txt = "np proc_arg"; loc} in
+  let match_expr =
+    A.Exp.match_ ~loc (exp_of_id arg_id)
+      (List.map2 (fun lhs rhs ->
+           {pc_lhs = lhs;
+            pc_guard = None;
+            pc_rhs = rhs})
+         clause_lhs
+         clause_rhs)
+  in
+  (* annotate match expr if co-domain is present *)
+  let match_expr = match opt_cod_typ with
+    | None -> match_expr
+    | Some typ -> A.Exp.constraint_ ~loc match_expr typ
+  in
+  (* generate [fun arg0 -> match arg0 with ...] *)
   let clauses_fn_expr =
-    let arg_id : string loc = {txt = "np proc_arg"; loc} in
     A.Exp.fun_ ~loc:proc.npc_clauses_loc Nolabel None
       (A.Pat.constraint_ ~loc (A.Pat.var ~loc arg_id) dom_typ) (* annotate domain type *)
-      (A.Exp.match_ ~loc (exp_of_id arg_id)
-         (List.map2 (fun lhs rhs ->
-              {pc_lhs = lhs;
-               pc_guard = None;
-               pc_rhs = rhs})
-            clause_lhs
-            clause_rhs))
-  in
-  (* annotate co-domain type *)
-  let clauses_fn_expr = match opt_cod_typ with
-    | None -> clauses_fn_expr
-    | Some typ -> A.Exp.constraint_ ~loc clauses_fn_expr typ
+      match_expr
   in
 
   (* [let proc arg ... = function ...] *)

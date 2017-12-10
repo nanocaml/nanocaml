@@ -116,9 +116,11 @@ let rec gen_simple_pat = function
   | pat -> failwith "gen_simple_pat called on non-simple pat"
 
 
-(** given an [np_pat], returns [p, f], where [p] is the generated
-    pattern, and [f] is a function on expressions which introduces
+(** given an [np_pat], returns [ppat, intro], where [ppat] is the generated
+    pattern, and [intro] is a function on expressions which introduces
     let bindings around the given expression.
+    TODO: maybe represent [intro] as a list of value bindings instead
+    of a function?
 
     [~next_id] is a [ref int] used to generate fresh identifies
     if [~bind_as] is [Some <string loc>], the given string will be
@@ -128,17 +130,17 @@ let rec gen_pattern ~next_id ~bind_as pat =
   let loc = loc_of_pat pat in
   match pat with
   | NPpat_any _ ->
-     let p = match bind_as with
+     let ppat = match bind_as with
        | None -> A.Pat.any ~loc ()
        | Some id -> A.Pat.var ~loc id (* [_ as x] becomes just [x] *)
-     in p, identity
+     in ppat, identity
 
   | NPpat_var id ->
-     let p0 = A.Pat.var ~loc:id.loc id in
-     let p = match bind_as with
-       | None -> p0
-       | Some id' -> A.Pat.alias ~loc:id.loc p0 id' (* [x as y] = [x as y] *)
-     in p, identity
+     let ppat = A.Pat.var ~loc:id.loc id in
+     let ppat = match bind_as with
+       | None -> ppat
+       | Some id' -> A.Pat.alias ~loc:id.loc ppat id' (* [x as y] = [x as y] *)
+     in ppat, identity
 
   | NPpat_alias (pat, id) ->
      begin match bind_as with
@@ -146,20 +148,23 @@ let rec gen_pattern ~next_id ~bind_as pat =
      | Some outer_id ->
         (* BEFORE: (p as x) as y -> e
            AFTER: p as x -> let y = x in e *)
-        let p, f = gen_pattern ~next_id ~bind_as:(Some id) pat in
-        p, f % simple_let outer_id (exp_of_id id)
+        let ppat, intro = gen_pattern ~next_id ~bind_as:(Some id) pat in
+        ppat, intro % simple_let outer_id (exp_of_id id)
      end
 
   | NPpat_tuple (pats, _) ->
-     let ps, fs = match bind_as with
+     let ppats, intro = match bind_as with
        | None ->
-          List.enum pats
-          |> Enum.map (gen_pattern ~next_id ~bind_as)
-          |> Enum.collect2
+          let ppats, intros =
+            List.enum pats
+            |> Enum.map (gen_pattern ~next_id ~bind_as)
+            |> Enum.collect2
+          in ppats, compose_all intros
+
        | Some id ->
           (* BEFORE: (p,q) as x -> e
              AFTER: (p as t0, q as t1) -> let x = t0, t1 in e *)
-          let ps, fs, binds =
+          let ppats, intros, binds =
             List.enum pats
             |> Enum.map (fun pat ->
                    let bind = fresh ~next_id ~loc in
@@ -168,10 +173,9 @@ let rec gen_pattern ~next_id ~bind_as pat =
             |> Enum.collect3
           in
           let tuple_exp = A.Exp.tuple ~loc (List.map exp_of_id binds) in
-          ps, fs @ [simple_let id tuple_exp]
+          ppats, compose_all intros % simple_let id tuple_exp
      in
-     A.Pat.tuple ~loc ps,
-     compose_all fs
+     A.Pat.tuple ~loc ppats, intro
 
   | NPpat_variant (lbl, opt_pat, _) ->
      (* TODO: this may be refactor-able, but i'm not sure. *)
@@ -184,13 +188,13 @@ let rec gen_pattern ~next_id ~bind_as pat =
         A.Pat.variant ~loc lbl None,
         simple_let id (A.Exp.variant ~loc lbl None)
      | Some pat, None ->
-        let p, f = gen_pattern ~next_id ~bind_as:None pat in
-        A.Pat.variant ~loc lbl (Some p), f
+        let ppat, intro = gen_pattern ~next_id ~bind_as:None pat in
+        A.Pat.variant ~loc lbl (Some ppat), intro
      | Some pat, Some id ->
         let bind = fresh ~next_id ~loc in
-        let p, f = gen_pattern ~next_id ~bind_as:(Some bind) pat in
-        A.Pat.variant ~loc lbl (Some p),
-        f % simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
+        let ppat, intro = gen_pattern ~next_id ~bind_as:(Some bind) pat in
+        A.Pat.variant ~loc lbl (Some ppat),
+        intro % simple_let id (A.Exp.variant ~loc lbl (Some (exp_of_id bind)))
      end
 
   (* this should never be the case after typeck, but
@@ -202,9 +206,8 @@ let rec gen_pattern ~next_id ~bind_as pat =
      (* BEFORE: (p [@r cata]) -> e
         AFTER: t0 -> let p = cata t0 in e *)
      let cata_tmp = fresh ~next_id ~loc in
-     let p, f = gen_pattern ~next_id ~bind_as pat in
-     let app_cata_exp = A.Exp.apply ~loc cata_exp
-                          [ Nolabel, exp_of_id cata_tmp ] in
+     let ppat, intro = gen_pattern ~next_id ~bind_as pat in
+     let app_cata_exp = A.Exp.apply ~loc cata_exp [ Nolabel, exp_of_id cata_tmp ] in
      A.Pat.var ~loc cata_tmp,
      simple_pat_let p app_cata_exp
 

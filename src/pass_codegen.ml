@@ -65,20 +65,19 @@ let fresh ~next_id ~loc =
 (* nanopass ast helpers --------------------------------------------------------- *)
 
 (** finds all the variables mentioned in the given pattern. returns
-    a list of their names only, sorted alphabetically. *)
-let vars_of_pattern pat0 : string list =
-  let open Set.String in
+    the [string loc]s in reverse order. *)
+let vars_of_pattern =
   let rec trav vrs = function
     | NPpat_any _ -> vrs
-    | NPpat_var {txt = x} -> add x vrs
-    | NPpat_alias (pat, {txt = x}) -> trav (add x vrs) pat
+    | NPpat_var id -> id::vrs
+    | NPpat_alias (pat, id) -> trav (id::vrs) pat
     | NPpat_tuple (pats, _) -> List.fold_left trav vrs pats
     | NPpat_variant (_, None, _) -> vrs
     | NPpat_variant (_, Some pat, _) -> trav vrs pat
     | NPpat_map pat -> trav vrs pat
     | NPpat_cata (pat, _) -> trav vrs pat
   in
-  Set.String.to_list (trav empty pat0)
+  trav []
 
 
 (* library --------------------------------------------------------- *)

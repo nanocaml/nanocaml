@@ -45,7 +45,7 @@ let tt =
 
       "vars_of_pattern" >::
         begin fun _ ->
-        assert_equal [ "x"; "y"; "z" ]
+        assert_equal [ id_z; id_x; id_y ]
           (vars_of_pattern
              (NPpat_tuple ([ var_y;
                              any;

@@ -26,6 +26,18 @@ module%language L1 = struct
   type nt = [ `Lists of (int list * string list) ]
 end
 
+                   (*
+this currently breaks the PPX, because
+  NPpat_cata (NPpat_map ...)
+should never be possible. the typeck algorithm (currently
+not being called) moves NPpat_cata directly
+
+let[@pass L0 => L1] split nt0 =
+  let rec nt = function
+    | `Pairs ((x,y) [@l] [@r foo]) -> `Lists (x, y)
+  in nt nt0
+                    *)
+
 let[@pass L0 => L1] split nt0 =
   let rec nt = function
     | `Pairs ((x,y) [@l]) -> `Lists (x, y)

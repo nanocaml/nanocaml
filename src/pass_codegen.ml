@@ -211,50 +211,52 @@ let rec gen_pattern ~next_id ~bind_as pat =
        (A.Exp.apply ~loc cata_exp [ Nolabel, exp_of_id cata_tmp ])
 
   | NPpat_map pat ->
-     (* (x,y) [@l] as z = (x,y) as z [@l] *)
-     let pat = match bind_as with
-       | None -> pat
-       | Some id -> NPpat_alias (pat, id)
+     let pat = match bind_as with None -> pat | Some id -> NPpat_alias (pat, id) in
+     let list_tmp = fresh ~next_id ~loc in
+     A.Pat.var ~loc list_tmp,
+     simple_pat_let
+       (gen_l_lhs ~loc pat)
+       (gen_l_rhs ~next_id pat list_tmp)
+
+(** generate the LHS pattern for a [@l] pattern (for binding the
+    results of the list comprehension). *)
+and gen_l_lhs ~loc pat =
+  match vars_of_pattern pat with
+  | [] -> A.Pat.construct ~loc {txt = Lident "()"; loc} None
+  | [x] -> A.Pat.var ~loc x
+  | xs -> A.Pat.tuple ~loc (List.map (A.Pat.var ~loc) xs)
+
+(** generate the RHS expression for a [@l] pattern (the expression
+    that performs the list comprehension). *)
+and gen_l_rhs ~next_id pat list_tmp =
+  let loc = loc_of_pat pat in
+  let ppat, intro = gen_pattern ~next_id ~bind_as:None pat in
+  match vars_of_pattern pat with
+  | [] ->
+     (* TODO: generate List.iter in case any catas have side effects *)
+     A.Exp.construct ~loc {txt = Lident "()"; loc} None
+
+  | [x] ->
+     Lib_ast.map_exp ~loc
+       (exp_of_id list_tmp)
+       ppat
+       (intro (exp_of_id x))
+
+  | xs ->
+     let empty = A.Exp.construct ~loc {txt = Lident "[]"; loc} None in
+     let cons x y =
+       let arg = A.Exp.tuple ~loc [ exp_of_id x; exp_of_id y ] in
+       A.Exp.construct ~loc {txt = Lident "::"; loc} (Some arg)
      in
-     begin match vars_of_pattern pat with
-     | [] -> A.Pat.any ~loc (), identity
-     | [x] ->
-        (* BEFORE: (x,_) [@l] -> e
-           AFTER:  t0 -> let x = Lib.map t0 (fun (x,_) -> x) in e *)
-        let list_tmp = fresh ~next_id ~loc in
-        let x_id : string loc = {txt = x; loc} in
-        A.Pat.var ~loc list_tmp,
-        simple_let x_id
-          (Lib_ast.map_exp ~loc    (* Lib.map *)
-             (exp_of_id list_tmp)  (* list_tmp *)
-             (gen_simple_pat pat)  (* (fun pat -> *)
-             (exp_of_id x_id))     (*   x) *)
+     let acc_tmps = List.map (fun {Asttypes.loc} -> fresh ~next_id ~loc) xs in
+     Lib_ast.fold_exp ~loc
+       (exp_of_id list_tmp)
+       (A.Exp.tuple ~loc (List.map (const empty) xs))
+       ppat
+       (A.Pat.tuple ~loc (List.map (A.Pat.var ~loc) acc_tmps))
+       (intro (A.Exp.tuple ~loc (List.map2 cons xs acc_tmps)))
 
-     | vars ->
-        (* BEFORE: p [@l] -> e
-           AFTER:  t0 -> let x,y ... =
-                           Lib.fold t0 ([], [] ...)
-                             (fun p (xs, ys ...) -> x::xs, y::ys ...)
-                         in e *)
-        let empty_exp = A.Exp.construct ~loc {txt = Lident "[]"; loc} None in
-        let cons_exp e1 e2 = A.Exp.construct ~loc {txt = Lident "::"; loc} (Some (A.Exp.tuple ~loc [ e1; e2 ])) in
 
-        let list_tmp = fresh ~next_id ~loc in
-        let acc_tmps = List.map (fun _ -> fresh ~next_id ~loc) vars in
-
-        A.Pat.var ~loc list_tmp,
-        simple_pat_let (A.Pat.tuple ~loc (List.map (fun var -> A.Pat.var ~loc {txt = var; loc}) vars))
-          (Lib_ast.fold_exp ~loc
-             (exp_of_id list_tmp) (* t0 *)
-             (A.Exp.tuple ~loc (List.map (const empty_exp) acc_tmps)) (* ([], ...) *)
-             (gen_simple_pat pat) (* p *)
-             (A.Pat.tuple ~loc (List.map (A.Pat.var ~loc) acc_tmps)) (* (xs, ...) *)
-             (A.Exp.tuple ~loc (List.map2 (fun var acc_id ->
-                                    cons_exp (* (x::xs, ...) *)
-                                      (A.Exp.ident ~loc {txt = Lident var; loc})
-                                      (exp_of_id acc_id))
-                                  vars acc_tmps)))
-     end
 
 
 (** generate type expression from language and nonterm **)

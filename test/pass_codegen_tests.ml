@@ -182,14 +182,14 @@ let tt =
         let p, f = gen_pat (NPpat_map (NPpat_tuple ([ var_x; any; var_y ], loc))) in
         assert_equal (A.Pat.var id_tmp0) p;
         assert_equal (simple_pat_let
-                        (A.Pat.tuple [ A.Pat.var id_x; A.Pat.var id_y ])
+                        (A.Pat.tuple [ A.Pat.var id_y; A.Pat.var id_x ])
                         (Lib_ast.fold_exp ~loc
                            (exp_of_id id_tmp0)
                            (A.Exp.tuple [ empty; empty ])
                            (A.Pat.tuple [ A.Pat.var id_x; A.Pat.any (); A.Pat.var id_y ])
                            (A.Pat.tuple [ A.Pat.var id_tmp1; A.Pat.var id_tmp2 ])
-                           (A.Exp.tuple [ cons (exp_of_id id_x) (exp_of_id id_tmp1);
-                                          cons (exp_of_id id_y) (exp_of_id id_tmp2) ]))
+                           (A.Exp.tuple [ cons (exp_of_id id_y) (exp_of_id id_tmp1);
+                                          cons (exp_of_id id_x) (exp_of_id id_tmp2) ]))
                         test_exp2)
           (f test_exp2);
         end;
@@ -209,6 +209,23 @@ let tt =
           (f test_exp1);
         end;
 
+      "gen_pattern(9)" >::
+        begin fun _ ->
+        (* BEFORE: x [@r foo] [@l] -> ee
+           AFTER: t0 -> let x = Lib.map t0 (fun t1 -> let x = foo t1 in x) in ee *)
+        let p, f = gen_pat (NPpat_map (NPpat_cata (var_x, Some test_exp1))) in
+        assert_equal (A.Pat.var id_tmp0) p;
+        assert_equal (simple_let id_x
+                        (Lib_ast.map_exp ~loc
+                           (exp_of_id id_tmp0)
+                           (A.Pat.var id_tmp1)
+                           (simple_let id_x
+                              (A.Exp.apply test_exp1
+                                 [ Nolabel, (exp_of_id id_tmp1) ])
+                              (exp_of_id id_x)))
+                        test_exp2)
+          (f test_exp2)
+        end;
 
       "gen_processor_vb(1)" >::
         begin fun _ ->

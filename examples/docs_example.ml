@@ -38,12 +38,30 @@ end
 let[@pass L0 => L1] make_explicit =
   [%passes
     let[@entry] rec expr = function
-      | `If1 (p, e [@r]) ->
+      | `If1 (p [@r], e [@r]) ->
         `If (p, e, `Apply (`Primitive "void", []))
-      | `Lambda (xs, bodies [@r], body [@r]) ->
+      | `Lambda (xs, bodies [@r] [@l], body [@r]) ->
         `Lambda (xs, `Begin (bodies, body))
-      | `Let ((xs, es [@r]) [@l], bodies [@r], body [@r]) ->
+      | `Let ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
         `Let (List.map2 (fun x e -> (x, e)) xs es, `Begin (bodies, body))
-      | `Let ((xs, es [@r]) [@l], bodies [@r], body [@r]) ->
+      | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
         `Letrec (List.map2 (fun x e -> (x, e)) xs es, `Begin (bodies, body))
   ]
+
+let test_ast =
+  `Let (["x", `Constant (`Int 5)],
+        [],
+        `If1 (`Apply (`Var "equal?", [`Var "x"; `Constant (`Int 6)]),
+              `Apply (`Var "print", [`Constant (`String "Hello, world!")])))
+
+let explicit_test_ast =
+  `Let (["x", `Constant (`Int 5)],
+        `Begin ([],
+                `If (`Apply (`Var "equal?", [`Var "x"; `Constant (`Int 6)]),
+                     `Apply (`Var "print", [`Constant (`String "Hello, world!")]),
+                     `Apply (`Primitive "void", []))))
+
+let () =
+  if make_explicit test_ast = explicit_test_ast
+    then ()
+    else print_endline "make_explicit test failed"

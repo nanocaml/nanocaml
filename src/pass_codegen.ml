@@ -84,23 +84,26 @@ let vars_of_pattern =
 
 module Lib_ast = struct
   open Longident
-  let fold_lid = Ldot (Ldot (Lident "Nanocaml", "Lib"), "fold")
-  let map_lid = Ldot (Ldot (Lident "Nanocaml", "Lib"), "map")
+  let fold_lid = Ldot (Lident "List", "fold_right")
+  let map_lid = Ldot (Lident "List", "map")
 
   (** generates expression of the form [fold l z0 (fun x z -> e)]. **)
   let fold_exp ~loc list_exp init_exp elem_pat acc_pat body_exp =
     A.Exp.apply ~loc (A.Exp.ident ~loc {txt = fold_lid; loc})
-      [ Nolabel, list_exp;
-        Nolabel, init_exp;
-        Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat
+      [ Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat
                    (A.Exp.fun_ ~loc Nolabel None acc_pat
-                      body_exp) ]
+                      body_exp)
+      ; Nolabel, list_exp
+      ; Nolabel, init_exp
+      ]
+
 
   (** generates expression of the form [map l (fun p -> e)]. **)
   let map_exp ~loc list_exp elem_pat body_exp =
     A.Exp.apply ~loc (A.Exp.ident ~loc {txt = map_lid; loc})
-      [ Nolabel, list_exp;
-        Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat body_exp ]
+      [ Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat body_exp
+      ; Nolabel, list_exp
+      ]
 end
 
 

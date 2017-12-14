@@ -199,7 +199,7 @@ let rec gen_pattern ~next_id ~bind_as pat =
   (* this should never be the case after typeck, but
      in case it is, just ignore the missing catamorphism. *)
   | NPpat_cata (pat, None) ->
-     gen_pattern ~next_id ~bind_as pat
+      gen_pattern ~next_id ~bind_as pat
 
   | NPpat_cata (pat, Some cata_exp) ->
      (* BEFORE: (p [@r cata]) -> e

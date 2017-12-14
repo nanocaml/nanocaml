@@ -41,15 +41,15 @@ open Lang
 let rec typeck_pass
     ({npp_input = lang;
       npp_procs = procs} as pass) =
-  let check_pattern = function
+  let check_pattern nt_name = function
     | (NPpat_variant (name, _, _) as pat, expr) ->
-      let ty = NP_nonterm pass.npp_name in
+      let ty = NP_nonterm nt_name in
       (typeck_pat ~pass ty pat, expr)
     | (pat, expr) -> (pat, expr) in
-  let make_exhaustive {npc_name; npc_clauses = clauses; npc_loc = loc} =
-    let missing_prods = cross_off (language_nonterm lang npc_name).npnt_productions clauses in
+  let make_exhaustive {npc_dom; npc_clauses = clauses; npc_loc = loc} =
+    let missing_prods = cross_off npc_dom.npnt_productions clauses in
     let missing_clauses = gen_missing ~pass ~loc missing_prods in
-    List.map check_pattern (clauses @ missing_clauses) in
+    List.map (check_pattern npc_dom.npnt_name) (clauses @ missing_clauses) in
   { pass with npp_procs = List.map (fun proc -> { proc with npc_clauses = make_exhaustive proc }) procs }
 
 (** returns an [exn] for type errors. **)

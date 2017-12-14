@@ -39,9 +39,18 @@ open Lang
              let e' = expr_of_expr e_ in
  **)
 let rec typeck_pass
-          ({npp_input = lang;
-            npp_procs = procs} as pass) =
-  pass
+    ({npp_input = lang;
+      npp_procs = procs} as pass) =
+  let check_pattern = function
+    | (NPpat_variant (name, _, _) as pat, expr) ->
+      let ty = NP_nonterm pass.npp_name in
+      (typeck_pat ~pass ty pat, expr)
+    | (pat, expr) -> (pat, expr) in
+  let make_exhaustive {npc_name; npc_clauses = clauses; npc_loc = loc} =
+    let missing_prods = cross_off (language_nonterm lang npc_name).npnt_productions clauses in
+    let missing_clauses = gen_missing ~pass ~loc missing_prods in
+    List.map check_pattern (clauses @ missing_clauses) in
+  { pass with npp_procs = List.map (fun proc -> { proc with npc_clauses = make_exhaustive proc }) procs }
 
 (** returns an [exn] for type errors. **)
 (* TODO: better error messages *)
@@ -50,6 +59,51 @@ and typeck_err ~loc typ =
     (Location.errorf ~loc
        "nanopass pattern type mismatch")
 
+(** Find all missing productions for a pass *)
+and cross_off prods = function
+  | [] -> prods
+  | (NPpat_any _, _)::_ -> []
+  | (NPpat_variant (variant_name, _, _), _)::clauses ->
+    let remove name =
+      List.remove_if (fun {nppr_name = n} -> n = name) in
+    cross_off (remove variant_name prods) clauses
+  | _::clauses -> cross_off prods clauses
+
+and gen_missing ~pass ~loc prods =
+  let fresh =
+    let num = ref 0 in
+    fun () ->
+      num := !num + 1;
+      string_of_int !num in
+  let rec gen_clause {nppr_name; nppr_arg} =
+    let rec arg_clause = function
+      | NP_term core ->
+        let name = fresh () in
+        let desc = Pexp_ident {txt = Lident name; loc} in
+        (NPpat_var {txt = name; loc}, {pexp_desc = desc; pexp_loc = loc; pexp_attributes = []})
+      | NP_nonterm nt_name ->
+        let name = fresh () in
+        let desc =
+          Pexp_apply
+            ({pexp_desc = Pexp_ident {txt = Lident nt_name; loc}; pexp_loc = loc; pexp_attributes = []},
+             [(Nolabel, {pexp_desc = Pexp_ident {txt = Lident name; loc}; pexp_loc = loc; pexp_attributes = []})]) in
+        (NPpat_var {txt = name; loc}, {pexp_desc = desc; pexp_loc = loc; pexp_attributes = []})
+      | NP_tuple tys ->
+        let (pats, exprs) = tys |> List.map arg_clause |> List.split in
+        (NPpat_tuple (pats, loc), {pexp_desc = Pexp_tuple exprs; pexp_loc = loc; pexp_attributes = []})
+      | NP_list ty ->
+        let id = fresh () in
+        (typeck_pat ~pass ty (NPpat_map (NPpat_cata (NPpat_var {txt = id; loc}, None))),
+         {pexp_desc = Pexp_ident {txt = Lident id; loc}; pexp_loc = loc; pexp_attributes = []})
+    in
+    let construct e =
+      {pexp_desc = Pexp_construct ({txt = Lident nppr_name; loc}, e); pexp_loc = loc; pexp_attributes = []} in
+    match nppr_arg with
+    | None -> (NPpat_variant (nppr_name, None, loc), construct None)
+    | Some arg ->
+      let (pat, expr) = arg_clause arg in
+      (NPpat_variant (nppr_name, Some pat, loc), construct (Some expr)) in
+  List.map gen_clause prods
 
 (** typecheck a single pattern, with the given expected type.
     [~total] is a [bool ref] that should be [false] (default) when the pattern is

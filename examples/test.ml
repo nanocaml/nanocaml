@@ -12,9 +12,9 @@ end
 
 let[@pass L0 => L1] annotate_b =
   let empty_a = `A "hello" in
-  let empty_b = `B (`C empty_a) in
+  let empty_c = `C empty_a in
   [%passes
     let[@entry] rec a = function
-      | `B -> `B empty_b
+      | `B -> `B empty_c
     and c = function
       | `C (a [@r]) -> `C a]

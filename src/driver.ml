@@ -30,8 +30,7 @@ let rewriter _config _cookies =
          Location.raise_errorf ~loc
            "nanopass may not be declared recursive"
        else
-         let pass = Pass.pass_of_value_binding vb in
-         (* TODO: typecheck the pass first *)
+         let pass = Pass.pass_of_value_binding vb |> Pass_typeck.typeck_pass in
          let vb' = Pass_codegen.gen_pass_vb pass in
          {pstr_loc = loc;
           pstr_desc = Pstr_value (Nonrecursive, [ vb' ])}

@@ -1,8 +1,10 @@
-let is_primitive =
-  List.mem [ "+"; "-"; "*"; "/"; "cons"; "car"; "cdr"; "pair?"; "vector"
-           ; "make-vector"; "vector-length"; "vector-ref"; "vector-set!"
-           ; "vector?"; "string"; "make-string"; "string-length"
-           ; "string-ref"; "string-set!"; "string?"; "void"]
+open OUnit2
+
+let is_primitive id =
+  List.mem id [ "+"; "-"; "*"; "/"; "cons"; "car"; "cdr"; "pair?"; "vector"
+              ; "make-vector"; "vector-length"; "vector-ref"; "vector-set!"
+              ; "vector?"; "string"; "make-string"; "string-length"
+              ; "string-ref"; "string-set!"; "string?"; "void"]
 
 module%language L0 = struct
   type expr =
@@ -35,6 +37,19 @@ module%language L1 = struct
     }
 end
 
+let[@pass L0 => L0] check_primitives =
+  [%passes
+    let[@entry] rec expr = function
+      | `Primitive p ->
+        assert (is_primitive p);
+        `Primitive p
+(* FIXES ERROR BUT WE DONT WANT THIS CODE
+      | `Let ((xs, es) [@r] [@l], bodies [@r] [@l], body [@r]) ->
+        `Let (List.map2 (fun x e -> (x, e)) xs es, bodies, body)
+      | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
+        `Letrec (List.map2 (fun x e -> (x, e)) xs es, bodies, body) *)
+  ]
+
 let[@pass L0 => L1] make_explicit =
   [%passes
     let[@entry] rec expr = function
@@ -61,7 +76,14 @@ let explicit_test_ast =
                      `Apply (`Var "print", [`Constant (`String "Hello, world!")]),
                      `Apply (`Primitive "void", []))))
 
-let () =
-  if make_explicit test_ast = explicit_test_ast
-    then ()
-    else print_endline "make_explicit test failed"
+let tt =
+  "docs_example" >::: [
+    "make_explicit" >::
+    begin fun _ ->
+      assert_equal (make_explicit test_ast) explicit_test_ast
+    end;
+    "check_primitives" >::
+    begin fun _ ->
+      assert_equal (check_primitives test_ast) test_ast
+    end
+  ]

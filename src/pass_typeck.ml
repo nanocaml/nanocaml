@@ -105,10 +105,10 @@ and gen_missing ~pass ~loc prods =
       (NPpat_variant (nppr_name, Some pat, loc), construct (Some expr)) in
   List.map gen_clause prods
 
-(** typecheck a single pattern, with the given expected type.
-    [~total] is a [bool ref] that should be [false] (default) when the pattern is
-    allowed to be conditional, but can be changed to [true] when list maps / catas are
-    encountered. **)
+(** typecheck a single pattern, with the given expected type. if it
+    succeeds, returns a pattern that is the same as the given pattern,
+    with all empty [@r] patterns filled in with an inferred catamorphism
+    function. **)
 and typeck_pat ~pass typ pat =
   match pat with
   | NPpat_any _ | NPpat_var _ -> pat

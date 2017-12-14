@@ -57,7 +57,7 @@ let rec typeck_pass
 and typeck_err ~loc typ =
   Location.Error
     (Location.errorf ~loc
-       "nanopass pattern type mismatch")
+       "nanopass pattern type mismatch %s" (string_of_type typ))
 
 (** Find all missing productions for a pass *)
 and cross_off prods = function
@@ -93,11 +93,11 @@ and gen_missing ~pass ~loc prods =
         (NPpat_tuple (pats, loc), {pexp_desc = Pexp_tuple exprs; pexp_loc = loc; pexp_attributes = []})
       | NP_list ty ->
         let id = fresh () in
-        (typeck_pat ~pass ty (NPpat_map (NPpat_cata (NPpat_var {txt = id; loc}, None))),
+        (typeck_pat ~pass (NP_list ty) (NPpat_map (NPpat_cata (NPpat_var {txt = id; loc}, None))),
          {pexp_desc = Pexp_ident {txt = Lident id; loc}; pexp_loc = loc; pexp_attributes = []})
     in
     let construct e =
-      {pexp_desc = Pexp_construct ({txt = Lident nppr_name; loc}, e); pexp_loc = loc; pexp_attributes = []} in
+      {pexp_desc = Pexp_variant (nppr_name, e); pexp_loc = loc; pexp_attributes = []} in
     match nppr_arg with
     | None -> (NPpat_variant (nppr_name, None, loc), construct None)
     | Some arg ->

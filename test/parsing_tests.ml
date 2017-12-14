@@ -79,13 +79,13 @@ let tt =
         begin fun _ ->
         match stri_type_decl
                 [%stri type expr =
-                   [ `Two of string * int
+                   [ `Two of string * int list
                    | `Zero ] ]
               |> nt_of_td
         with
         | {npnt_name = "expr";
            npnt_productions = [
-               {nppr_name = "Two"; nppr_arg = Some _};
+               {nppr_name = "Two"; nppr_arg = Some (NP_list (NP_tuple _))};
                {nppr_name = "Zero"; nppr_arg = None} ]} -> ()
         | _ ->
            assert_failure "expr nonterm has the wrong structure"

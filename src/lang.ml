@@ -31,7 +31,11 @@ type np_language =
 
 
 let rec string_of_type = function
-  | NP_term core_type -> "<core>"
+  | NP_term core_type ->
+    begin match core_type.ptyp_desc with
+      | Ptyp_constr ({txt = l}, _) -> "<core> (" ^ List.last (Longident.flatten l) ^ ")"
+      | _ -> "<core>"
+    end
   | NP_nonterm s -> s
   | NP_tuple t -> "(" ^ String.concat "," (List.map string_of_type t) ^ ")"
   | NP_list t -> "[" ^ string_of_type t ^ "]"
@@ -81,16 +85,10 @@ let type_of_core_type ~nt_names t =
     (* tuple: *)
     | Ptyp_tuple typs ->
       let npts = List.map cvt typs in
-      if npts |> List.for_all (function | NP_term _ -> true | _ -> false) then
-        NP_term ptyp (* [<term> * <term>] is a terminal *)
-      else
-        NP_tuple npts
+      NP_tuple npts
     (* list: *)
     | Ptyp_constr ({txt = Longident.Lident "list"}, [elem]) ->
-      begin match cvt elem with
-        | NP_term _ -> NP_term ptyp (* [<term> list] is a terminal, not a list *)
-        | npt -> NP_list npt
-      end
+      NP_list (cvt elem)
     (* otherwise, it's a terminal: *)
     | _ ->
       NP_term ptyp

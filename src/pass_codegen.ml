@@ -111,10 +111,14 @@ module Lib_ast = struct
         let hd = fresh ~next_id ~loc and tl = fresh ~next_id ~loc
         and cons_lid = Asttypes.{txt = Lident "::"; loc} in
         A.Pat.construct ~loc cons_lid
-          (Some (A.Pat.tuple ~loc [A.Pat.var ~loc hd; A.Pat.var ~loc tl]))) list_exps in
+          (Some (A.Pat.tuple ~loc [A.Pat.var ~loc hd; A.Pat.var ~loc tl]))) list_exps
+    and empty_lists = List.map (fun _ ->
+        let nil_lid = Asttypes.{txt = Lident "[]"; loc} in
+        A.Exp.construct ~loc nil_lid None) list_exps in
     let fn_body =
       A.Exp.function_ ~loc
-        [A.Exp.case (A.Pat.tuple ~loc cons_pats) (A.Exp.tuple ~loc list_exps)] in
+        [ A.Exp.case (A.Pat.tuple ~loc cons_pats) (A.Exp.tuple ~loc list_exps)
+        ; A.Exp.case (A.Pat.any ~loc ()) (A.Exp.tuple ~loc empty_lists)] in
     A.Exp.let_ ~loc Recursive [A.Vb.mk ~loc (A.Pat.var ~loc name) fn_body] body_exp
 end
 

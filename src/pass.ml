@@ -241,7 +241,7 @@ let pass_of_value_binding = function
 
        | {pexp_loc = loc} ->
           Location.raise_errorf ~loc
-            "let[@pass] must end in recursive let, followed by a single expression"
+            "let[@pass] must end in either a [%%passes ...] block or a recursive let, followed by a single expression"
      in
      let pre, bindings, post = extract_definitions identity e0 in
 

@@ -104,6 +104,18 @@ module Lib_ast = struct
       [ Nolabel, A.Exp.fun_ ~loc Nolabel None elem_pat body_exp
       ; Nolabel, list_exp
       ]
+
+  (** generates a function to zip n lists *)
+  let zipper_exp ~next_id ~loc name list_exps body_exp =
+    let cons_pats = List.map (fun _ ->
+        let hd = fresh ~next_id ~loc and tl = fresh ~next_id ~loc
+        and cons_lid = Asttypes.{txt = Lident "::"; loc} in
+        A.Pat.construct ~loc cons_lid
+          (Some (A.Pat.tuple ~loc [A.Pat.var ~loc hd; A.Pat.var ~loc tl]))) list_exps in
+    let fn_body =
+      A.Exp.function_ ~loc
+        [A.Exp.case (A.Pat.tuple ~loc cons_pats) (A.Exp.tuple ~loc list_exps)] in
+    A.Exp.let_ ~loc Recursive [A.Vb.mk ~loc (A.Pat.var ~loc name) fn_body] body_exp
 end
 
 

@@ -43,11 +43,12 @@ let[@pass L0 => L0] check_primitives =
       | `Primitive p ->
         assert (is_primitive p);
         `Primitive p
-(* FIXES ERROR BUT WE DONT WANT THIS CODE
-      | `Let ((xs, es) [@r] [@l], bodies [@r] [@l], body [@r]) ->
+      | `Let ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
         `Let (List.map2 (fun x e -> (x, e)) xs es, bodies, body)
       | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Letrec (List.map2 (fun x e -> (x, e)) xs es, bodies, body) *)
+        `Letrec (List.map2 (fun x e -> (x, e)) xs es, bodies, body)
+(* FIXES ERROR BUT WE DONT WANT THIS CODE
+*)
   ]
 
 let[@pass L0 => L1] make_explicit =
@@ -58,9 +59,9 @@ let[@pass L0 => L1] make_explicit =
       | `Lambda (xs, bodies [@r] [@l], body [@r]) ->
         `Lambda (xs, `Begin (bodies, body))
       | `Let ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Let (List.map2 (fun x e -> (x, e)) xs es, `Begin (bodies, body))
+        `Let ((xs, es) [@l], `Begin (bodies, body))
       | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Letrec (List.map2 (fun x e -> (x, e)) xs es, `Begin (bodies, body))
+        `Letrec ((xs, es) [@l], `Begin (bodies, body))
   ]
 
 let test_ast =

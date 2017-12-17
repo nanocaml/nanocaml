@@ -107,18 +107,24 @@ module Lib_ast = struct
 
   (** generates a function to zip n lists *)
   let zipper_exp ~next_id ~loc name list_exps body_exp =
+    let cons_lid = Asttypes.{txt = Lident "::"; loc} in
     let cons_pats = List.map (fun _ ->
-        let hd = fresh ~next_id ~loc and tl = fresh ~next_id ~loc
-        and cons_lid = Asttypes.{txt = Lident "::"; loc} in
-        A.Pat.construct ~loc cons_lid
-          (Some (A.Pat.tuple ~loc [A.Pat.var ~loc hd; A.Pat.var ~loc tl]))) list_exps
-    and empty_lists = List.map (fun _ ->
-        let nil_lid = Asttypes.{txt = Lident "[]"; loc} in
-        A.Exp.construct ~loc nil_lid None) list_exps in
+        let hd = fresh ~next_id ~loc and tl = fresh ~next_id ~loc in
+        ((hd, tl),
+         A.Pat.construct ~loc cons_lid
+           (Some (A.Pat.tuple ~loc [A.Pat.var ~loc hd; A.Pat.var ~loc tl])))) list_exps in
+    let recurse =
+      A.Exp.apply ~loc (A.Exp.ident ~loc (lident_of_id name))
+        [(Nolabel, A.Exp.tuple ~loc (List.map (fun ((_, tl), _) ->
+             A.Exp.ident ~loc (lident_of_id tl)) cons_pats))]
+    and tuple =
+      A.Exp.tuple ~loc (List.map (fun ((hd, _), _) ->
+             A.Exp.ident ~loc (lident_of_id hd)) cons_pats) in
     let fn_body =
       A.Exp.function_ ~loc
-        [ A.Exp.case (A.Pat.tuple ~loc cons_pats) (A.Exp.tuple ~loc list_exps)
-        ; A.Exp.case (A.Pat.any ~loc ()) (A.Exp.tuple ~loc empty_lists)] in
+        [ A.Exp.case (A.Pat.tuple ~loc (List.map (fun (_, pat) -> pat) cons_pats))
+            (A.Exp.construct ~loc cons_lid (Some (A.Exp.tuple ~loc [tuple; recurse])))
+        ; A.Exp.case (A.Pat.any ~loc ()) (A.Exp.construct ~loc {txt = Lident "[]"; loc} None)] in
     A.Exp.let_ ~loc Recursive [A.Vb.mk ~loc (A.Pat.var ~loc name) fn_body] body_exp
 end
 
@@ -284,15 +290,33 @@ let typ_of_nonterm ~loc lang nt =
     {txt = Ldot (Lident lang.npl_name, nt.npnt_name); loc}
     []
 
+let gen_zipper_exps ~next_id ~loc =
+  let mapper =
+    let open Ast_mapper in
+    { default_mapper with
+      expr = fun mapper expr -> match expr with
+        | { pexp_desc = Pexp_tuple es;
+            pexp_loc = loc;
+            pexp_attributes = [{txt = "l"}, _] } ->
+          let name = fresh ~next_id ~loc
+          and es = List.map (default_mapper.expr mapper) es in
+          let apply_zipper =
+            A.Exp.apply ~loc (A.Exp.ident ~loc (lident_of_id name)) [(Nolabel, A.Exp.tuple ~loc es)] in
+          Lib_ast.zipper_exp ~next_id ~loc name es apply_zipper
+        | expr -> default_mapper.expr mapper expr
+    } in
+  mapper.expr mapper
+
 (** generate [value_binding] from [np_processor]. **)
 let gen_processor_vb l0 l1 proc =
-  let loc = proc.npc_loc in
+  let loc = proc.npc_loc
+  and next_id = ref 0 in
 
   (* generate pattern/exprs for clauses *)
   let clause_lhs, clause_rhs =
     List.enum proc.npc_clauses
     |> Enum.map (fun (pat, rhs_exp) ->
-           let p_lhs, intro = gen_pattern ~next_id:(ref 0) ~bind_as:None pat in
+           let p_lhs, intro = gen_pattern ~next_id ~bind_as:None pat in
            p_lhs, intro rhs_exp)
     |> Enum.collect2
   in
@@ -308,7 +332,7 @@ let gen_processor_vb l0 l1 proc =
       (List.map2 (fun lhs rhs ->
            {pc_lhs = lhs;
             pc_guard = None;
-            pc_rhs = rhs})
+            pc_rhs = gen_zipper_exps ~next_id ~loc rhs})
          clause_lhs
          clause_rhs)
   in

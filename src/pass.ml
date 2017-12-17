@@ -230,6 +230,16 @@ let pass_of_value_binding = function
             (fun e' -> f {e with pexp_desc = Pexp_fun (lbl, dflt, pat, e')})
             body
 
+       | {pexp_desc = Pexp_letmodule (name, mod_expr, body)} as e ->
+         extract_definitions
+           (fun e' -> f {e with pexp_desc = Pexp_letmodule (name, mod_expr, e')})
+           body
+
+       | {pexp_desc = Pexp_letexception (exn, body)} as e ->
+         extract_definitions
+           (fun e' -> f {e with pexp_desc = Pexp_letexception (exn, e')})
+           body
+
        | {pexp_desc = Pexp_let (recf, vbs, ({pexp_desc = Pexp_let _} as body))} as e
        | ({pexp_desc = Pexp_let (recf, vbs, ({pexp_desc = Pexp_extension _} as body))} as e) ->
           extract_definitions

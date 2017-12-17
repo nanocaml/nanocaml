@@ -38,15 +38,17 @@ module%language L1 = struct
 end
 
 let[@pass L0 => L0] check_primitives =
+  let exception Unknown_primitive of string in
   [%passes
     let[@entry] rec expr = function
       | `Primitive p ->
-        assert (is_primitive p);
-        `Primitive p
+        if is_primitive p
+        then `Primitive p
+        else raise (Unknown_primitive p)
       | `Let ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Let (List.map2 (fun x e -> (x, e)) xs es, bodies, body)
+        `Let ((xs, es) [@l], bodies, body)
       | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Letrec (List.map2 (fun x e -> (x, e)) xs es, bodies, body)
+        `Letrec ((xs, es) [@l], bodies, body)
 (* FIXES ERROR BUT WE DONT WANT THIS CODE
 *)
   ]

@@ -45,12 +45,6 @@ let[@pass L0 => L0] check_primitives =
         if is_primitive p
         then `Primitive p
         else raise (Unknown_primitive p)
-      | `Let ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Let ((xs, es) [@l], bodies, body)
-      | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Letrec ((xs, es) [@l], bodies, body)
-(* FIXES ERROR BUT WE DONT WANT THIS CODE
-*)
   ]
 
 let[@pass L0 => L1] make_explicit =

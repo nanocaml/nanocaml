@@ -83,18 +83,19 @@ and gen_missing ~pass ~loc prods =
         (NPpat_var {txt = name; loc}, {pexp_desc = desc; pexp_loc = loc; pexp_attributes = []})
       | NP_nonterm nt_name ->
         let name = fresh () in
-        let desc =
-          Pexp_apply
-            ({pexp_desc = Pexp_ident {txt = Lident nt_name; loc}; pexp_loc = loc; pexp_attributes = []},
-             [(Nolabel, {pexp_desc = Pexp_ident {txt = Lident name; loc}; pexp_loc = loc; pexp_attributes = []})]) in
-        (NPpat_var {txt = name; loc}, {pexp_desc = desc; pexp_loc = loc; pexp_attributes = []})
+        (typeck_pat ~pass (NP_nonterm nt_name) (NPpat_cata (NPpat_var {txt = name; loc}, None)),
+         {pexp_desc = Pexp_ident {txt = Lident name; loc}; pexp_loc = loc; pexp_attributes = []})
       | NP_tuple tys ->
         let (pats, exprs) = tys |> List.map arg_clause |> List.split in
         (NPpat_tuple (pats, loc), {pexp_desc = Pexp_tuple exprs; pexp_loc = loc; pexp_attributes = []})
+      | NP_list (NP_tuple tys) ->
+        let (pats, exprs) = tys |> List.map arg_clause |> List.split in
+        (typeck_pat ~pass (NP_list (NP_tuple tys)) (NPpat_map (NPpat_tuple (pats, loc))),
+        {pexp_desc = Pexp_tuple exprs; pexp_loc = loc; pexp_attributes = [{txt="l"; loc}, PStr []]})
       | NP_list ty ->
-        let id = fresh () in
-        (typeck_pat ~pass (NP_list ty) (NPpat_map (NPpat_cata (NPpat_var {txt = id; loc}, None))),
-         {pexp_desc = Pexp_ident {txt = Lident id; loc}; pexp_loc = loc; pexp_attributes = []})
+        let (pat, expr) = arg_clause ty in
+        (typeck_pat ~pass (NP_list ty) (NPpat_map pat),
+         {expr with pexp_attributes = [{txt="l"; loc}, PStr []]})
     in
     let construct e =
       {pexp_desc = Pexp_variant (nppr_name, e); pexp_loc = loc; pexp_attributes = []} in

@@ -60,6 +60,7 @@ module%language SchemeNoLet = struct
     { del : [ `Let of string * expr * expr (* Must perfectly match the existing production rule *)
             ]
     } (* Nothing to add *)
+end
 ```
 
 This new language is just like `Scheme0`, but it ditches the `let` production. That means that in order to translate from `Scheme0` to `SchemeNoLet` we need to write a pass that removes the `let`s.

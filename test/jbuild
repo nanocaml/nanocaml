@@ -4,6 +4,7 @@
  ((name test_main)
   (libraries (oUnit nanocaml))
   (preprocess (pps (nanocaml
+                    ppx_tools_versioned.metaquot_405
                     ocaml-migrate-parsetree.driver-main)))))
 
 (alias

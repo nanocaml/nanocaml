@@ -223,16 +223,19 @@ let rec gen_pattern ~next_id ~bind_as pat =
   (* this should never be the case after typeck, but
      in case it is, just ignore the missing catamorphism. *)
   | NPpat_cata (pat, None) ->
-      gen_pattern ~next_id ~bind_as pat
+    gen_pattern ~next_id ~bind_as pat
 
   | NPpat_cata (pat, Some cata_exp) ->
      (* BEFORE: (p [@r cata]) -> e
         AFTER: t0 -> let p = cata t0 in e *)
-     let ppat = gen_simple_pat pat in
-     let cata_tmp = fresh ~next_id ~loc in
-     A.Pat.var ~loc cata_tmp,
-     simple_pat_let ppat
-       (A.Exp.apply ~loc cata_exp [ Nolabel, exp_of_id cata_tmp ])
+    let pat = match bind_as with
+      | None -> pat
+      | Some id -> NPpat_alias (pat, id) in
+    let ppat = gen_simple_pat pat in
+    let cata_tmp = fresh ~next_id ~loc in
+    A.Pat.var ~loc cata_tmp,
+    simple_pat_let ppat
+      (A.Exp.apply ~loc cata_exp [ Nolabel, exp_of_id cata_tmp ])
 
   | NPpat_map pat ->
      let pat = match bind_as with None -> pat | Some id -> NPpat_alias (pat, id) in

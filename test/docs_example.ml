@@ -56,8 +56,8 @@ let[@pass L0 => L1] make_explicit =
         `Lambda (xs, `Begin (bodies, body))
       | `Let ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
         `Let ((xs, es) [@l], `Begin (bodies, body))
-      | `Letrec ((xs, es [@r]) [@l], bodies [@r] [@l], body [@r]) ->
-        `Letrec ((xs, es) [@l], `Begin (bodies, body))
+      | `Letrec ((xs, es [@r]) [@l] as binds, bodies [@r] [@l], body [@r]) ->
+        `Letrec (binds, `Begin (bodies, body))
   ]
 
 let test_ast =

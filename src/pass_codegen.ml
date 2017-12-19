@@ -59,8 +59,7 @@ let simple_pat_let ?(recflag=Asttypes.Nonrecursive) p e1 e2 =
 let fresh ~next_id ~loc =
   let i = !next_id in
   next_id := i + 1;
-  ({txt = Printf.sprintf "np tmp_id%d" i; loc} : string loc)
-
+  ({txt = Printf.sprintf "np$codegen$%d" i; loc} : string loc)
 
 (* nanopass ast helpers --------------------------------------------------------- *)
 
@@ -326,7 +325,7 @@ let gen_processor_vb l0 l1 proc =
   let opt_cod_typ = Option.map (typ_of_nonterm ~loc l1) proc.npc_cod in
 
   (* generate [match arg0 with clause -> rhs ...] *)
-  let arg_id : string loc = {txt = "np proc_arg"; loc} in
+  let arg_id : string loc = {txt = "np$proc_arg"; loc} in
   let match_expr =
     A.Exp.match_ ~loc (exp_of_id arg_id)
       (List.map2 (fun lhs rhs ->

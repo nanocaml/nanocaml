@@ -74,7 +74,7 @@ and gen_missing ~pass ~loc prods =
     let num = ref 0 in
     fun () ->
       num := !num + 1;
-      string_of_int !num in
+      Printf.sprintf "np$typeck$%d" !num in
   let rec gen_clause {nppr_name; nppr_arg} =
     let rec arg_clause = function
       | NP_term core ->

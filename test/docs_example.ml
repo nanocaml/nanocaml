@@ -43,8 +43,8 @@ let[@pass L0 => L0] check_primitives =
     let[@entry] rec expr = function
       | `Primitive p ->
         if is_primitive p
-        then `Primitive p
-        else raise (Unknown_primitive p)
+          then `Primitive p
+          else raise (Unknown_primitive p)
   ]
 
 let[@pass L0 => L1] make_explicit =

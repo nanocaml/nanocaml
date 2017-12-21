@@ -61,25 +61,11 @@ let tt =
            assert_failure "[(int * expr) list] does not match"
         end;
 
-      "type_of_core_type(2)" >::
-        begin fun _ ->
-        match t_of_ct [%type: int list] with
-        | NP_term {ptyp_desc = Ptyp_constr ({txt = Lident "list"}, _)} -> ()
-        | _ -> assert_failure "[int list] should be a list terminal"
-        end;
-
-      "type_of_core_type(3)" >::
-        begin fun _ ->
-        match t_of_ct [%type: int * string] with
-        | NP_term {ptyp_desc = Ptyp_tuple [_; _]} -> ()
-        | _ -> assert_failure "[int * string] should be a tuple terminal"
-        end;
-
       "nonterm_of_type_decl(1)" >::
         begin fun _ ->
         match stri_type_decl
                 [%stri type expr =
-                   [ `Two of string * int list
+                   [ `Two of (string * int) list
                    | `Zero ] ]
               |> nt_of_td
         with

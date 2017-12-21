@@ -56,7 +56,6 @@ let tt =
 
       "fold_exp" >::
         begin fun _ ->
-        assert_equal "a-bc-d-e" (Nanocaml.Lib.fold ["a"; "bc"; "d"] "e" (Printf.sprintf "%s-%s"));
         let l = exp_of_id id_y in
         let z0 = exp_of_id id_z in
         let x = A.Pat.var id_x in
@@ -64,25 +63,24 @@ let tt =
         let e = test_exp1 in
         assert_equal (A.Exp.apply
                         (A.Exp.ident
-                           {txt = Ldot (Ldot (Lident "Nanocaml", "Lib"), "fold"); loc})
-                        [ Nolabel, l;
-                          Nolabel, z0;
-                          Nolabel, A.Exp.fun_ Nolabel None x
-                                     (A.Exp.fun_ Nolabel None z e) ])
+                           {txt = Ldot (Lident "List", "fold_right"); loc})
+                        [ Nolabel, A.Exp.fun_ Nolabel None x
+                                     (A.Exp.fun_ Nolabel None z e);
+                          Nolabel, l;
+                          Nolabel, z0 ])
           (Lib_ast.fold_exp ~loc l z0 x z e);
         end;
 
       "map_exp" >::
         begin fun _ ->
-        assert_equal [1;2;6] (Nanocaml.Lib.map [0;1;5] succ);
         let l = exp_of_id id_y in
         let x = A.Pat.var id_x in
         let e = test_exp2 in
         assert_equal (A.Exp.apply
                         (A.Exp.ident
-                           {txt = Ldot (Ldot (Lident "Nanocaml", "Lib"), "map"); loc})
-                        [ Nolabel, l;
-                          Nolabel, A.Exp.fun_ Nolabel None x e ])
+                           {txt = Ldot (Lident "List", "map"); loc})
+                        [ Nolabel, A.Exp.fun_ Nolabel None x e;
+                          Nolabel, l ])
           (Lib_ast.map_exp ~loc l x e);
         end;
 
